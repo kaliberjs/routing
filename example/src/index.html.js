@@ -3,7 +3,6 @@ import '/index.css'
 import stylesheet from '@kaliber/build/lib/stylesheet'
 import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
-import config from '@kaliber/config'
 import App from '/App?universal'
 import { pick } from '@kaliber/routing'
 
@@ -32,7 +31,7 @@ export default function Index({ location, data }) {
         {javascript}
       </head>
       <body>
-        <App config={config.client} initialLocation={location} />
+        <App initialLocation={location} />
       </body>
     </html>
   )

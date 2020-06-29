@@ -1,9 +1,12 @@
 // copied from https://github.com/reach/router/blob/master/src/lib/history.js
+createHistory.singleton = null
 export function createHistory() {
+  if (createHistory.singleton) return createHistory.singleton
+
   let listeners = []
   let location = getLocation()
 
-  return {
+  return createHistory.singleton = {
     get location() { return location },
 
     listen(listener) {
@@ -23,7 +26,6 @@ export function createHistory() {
     },
 
     navigate(to, { state = undefined, replace = false } = {}) {
-      console.log('navigate', to)
       if (typeof to === 'number') window.history.go(to)
       else {
         state = { ...state, key: Date.now() + '' }

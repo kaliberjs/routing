@@ -2,11 +2,25 @@ import { useRouting, Link } from '@kaliber/routing'
 
 export default function App({ initialLocation }) {
   const { pick } = useRouting({ initialLocation })
-  return pick(
-    ['', <Home />],
-    ['articles', <Articles />],
-    ['articles/:articleId/*', params => <Article {...{ params }} />],
-    ['*', params => <NotFound {...{ params }} />],
+  return (
+    <>
+      <Navigation />
+      {pick(
+        ['', <Home />],
+        ['articles', <Articles />],
+        ['articles/:articleId/*', params => <Article {...{ params }} />],
+        ['*', params => <NotFound {...{ params }} />],
+      )}
+    </>
+  )
+}
+
+function Navigation() {
+  return (
+    <div>
+      <Link to={''}>Home</Link>
+      <Link to={'articles'}>Articles</Link>
+    </div>
   )
 }
 
@@ -14,7 +28,7 @@ function Home() {
   return (
     <div>
       Home
-      <Link to='/articles'>Articles</Link>
+      <Link to='articles'>Articles</Link>
     </div>
   )
 }
