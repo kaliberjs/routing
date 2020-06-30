@@ -46,7 +46,7 @@ function Articles() {
 }
 
 function Article({ params: { articleId } }) {
-  const { routes } = useRouting()
+  const { routes, route } = useRouting()
   return (
     <div>
       <h1>Article {articleId}</h1>
@@ -62,6 +62,7 @@ function Article({ params: { articleId } }) {
           ['tab2', 'Tab 2'],
         )}
       </div>
+      {route('tab1', <div>Side bar for tab 1</div>)}
     </div>
   )
 }

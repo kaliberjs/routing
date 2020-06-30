@@ -8,11 +8,7 @@
 */
 /**
   @template {unknown} T
-  @typedef {((params: object) => T) | T} CreateChildren<T>
-*/
-/**
-  @template {unknown} T
-  @typedef {Parameters<(routePath: string, createChildren: CreateChildren<T>) => void>} Route<T>
+  @typedef {Parameters<(routePath: string, createChildren: ((params: object) => T) | T) => void>} Route<T>
 */
 
 import { createHistory } from './history'
@@ -28,12 +24,16 @@ const inBrowser = typeof window !== 'undefined'
 // TODO: eslint plugin for key warning of pairs
 /** @returns {{
   routes<T>(...routes: Array<Route<T>>): JSX.Element,
+  route<T>(...route: Route<T>): JSX.Element
 }}
 */
 export function useRouting({ initialLocation = undefined } = {}) {
   return {
-    routes(...routes) { return <Routing {...{ routes, initialLocation }} /> }
+    routes,
+    route(...route) { return routes(route) },
   }
+
+  function routes(...routes) { return <Routing {...{ routes, initialLocation }} /> }
 }
 
 export { pick }
