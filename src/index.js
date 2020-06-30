@@ -1,7 +1,7 @@
 /**
   @typedef {(to: number | string, x?: { state: object, replace?: boolean }) => void} Navigate
   @typedef {{
-    location: { pathname: string, search: string, hash: string },
+    location: { pathname: string, search: string, hash: string, state?: object },
     navigate: Navigate
   }} Location
   @typedef {{ basePath: string, baseParams: object, navigate: Navigate }} Base
@@ -130,24 +130,61 @@ function RoutingImpl({ routes }) {
   return pick(relativePathname, ...mappedRoutes)
 }
 
-export function Link({ to, children: originalChildren }) {
+export function Link({
+  to,
+  replace = undefined,
+  state = undefined,
+  anchorProps = {},
+  children: originalChildren
+}) {
   const context = React.useContext(baseContext)
-  const children = <LinkImpl {...{ to }} children={originalChildren} />
+  const children = <LinkImpl {...{ to, replace, anchorProps, state }} children={originalChildren} />
   return context ? children : <LocationProvider {...{ children }} />
 }
 
-// TODO: check Reach router for a better implementation
-function LinkImpl({ to, children }) {
+// TODO: do we really want this to be fixed to an `a`, or do we want to allow it to be a `button`, or something else? (check projects)
+// I think it should be an `a`, it's a link after all.
+function LinkImpl({ to, replace, state: newState, anchorProps, children }) {
   const { basePath, navigate } = React.useContext(baseContext)
+  const location = useLocation() // might be undefined on server side if Link is used outside of server location context
+
   const href = resolve(basePath, to)
-  return <a {...{ href, children, onClick }} />
+  // TODO: should we allow http `to`? And deal with `_target: 'blank'`?
+  return <a
+    {...anchorProps}
+    {...{ href, children, onClick }}
+  />
 
   function onClick(e) {
-    e.preventDefault()
-    navigate(to)
+    if (anchorProps.onClick) anchorProps.onClick(e)
+    if (shouldNavigate(e)) {
+      e.preventDefault()
+      const { pathname, state: currentState } = location
+      const shouldReplace = replace === undefined
+        ? pathname === encodeURI(href) && shallowEqual(currentState || {}, newState || {})
+        : replace
+
+      navigate(to, { replace: shouldReplace, state: newState })
+    }
   }
 }
 
 function resolve(basePath, to) {
   return to.startsWith('/') ? to : `${basePath}/${to}`
+}
+
+function shallowEqual(o1, o2) {
+  const o1Keys = Object.keys(o1)
+  return (
+    o1Keys.length === Object.keys(o2).length &&
+    o1Keys.every(key => o2.hasOwnProperty(key) && o1[key] === o2[key])
+  )
+}
+
+function shouldNavigate(e) {
+  return (
+    !e.defaultPrevented &&
+    e.button === 0 &&
+    !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+  )
 }
