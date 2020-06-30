@@ -6,6 +6,14 @@
   }} Location
   @typedef {{ basePath: string, baseParams: object, navigate: Navigate }} Base
 */
+/**
+  @template {unknown} T
+  @typedef {((params: object) => T) | T} CreateChildren<T>
+*/
+/**
+  @template {unknown} T
+  @typedef {Parameters<(routePath: string, createChildren: CreateChildren<T>) => void>} Route<T>
+*/
 
 import { createHistory } from './history'
 import { pick, callOrReturn } from './matching'
@@ -18,9 +26,13 @@ const baseContext = React.createContext(undefined)
 const inBrowser = typeof window !== 'undefined'
 
 // TODO: eslint plugin for key warning of pairs
+/** @returns {{
+  routes<T>(...routes: Array<Route<T>>): JSX.Element,
+}}
+*/
 export function useRouting({ initialLocation = undefined } = {}) {
   return {
-    pick(...routes) { return <Routing {...{ routes, initialLocation }} /> }
+    routes(...routes) { return <Routing {...{ routes, initialLocation }} /> }
   }
 }
 
