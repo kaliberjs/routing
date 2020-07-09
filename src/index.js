@@ -4,7 +4,14 @@
     location: { pathname: string, search: string, hash: string, state?: object },
     navigate: Navigate
   }} Location
-  @typedef {{ basePath: string, baseParams: object, navigate: Navigate }} Base
+  @typedef {{
+    basePath: string, baseParams: object, navigate: Navigate,
+    context: any,
+    handlers: {
+      extractPath(routePath: any): string,
+      determineNestedContext(context: any, routePath: any): any,
+    },
+  }} Base
 */
 /**
   @template {unknown} T
@@ -21,19 +28,29 @@ const baseContext = React.createContext(undefined)
 
 const inBrowser = typeof window !== 'undefined'
 
+const defaultAdvanced = {
+  context: undefined,
+  handlers: {
+    extractPath(routePath) { return routePath },
+    determineNestedContext(context, routePath) { return context },
+  },
+}
+
 // TODO: eslint plugin for key warning of pairs
 /** @returns {{
   routes<T>(...routes: Array<Route<T>>): JSX.Element,
   route<T>(...route: Route<T>): JSX.Element
+  context: any,
 }}
 */
-export function useRouting({ initialLocation = undefined } = {}) {
+export function useRouting({ initialLocation = undefined, advanced = undefined, basePath = '' } = {}) {
   return {
     routes,
     route(...route) { return routes(route) },
+    context: advanced && advanced.context,
   }
 
-  function routes(...routes) { return <Routing {...{ routes, initialLocation }} /> }
+  function routes(...routes) { return <Routing {...{ routes, initialLocation, advanced, basePath }} /> }
 }
 
 export { pick }
@@ -50,8 +67,19 @@ export function useNavigate() {
   return context.navigate
 }
 
-function LocationProvider({ initialLocation = undefined, children: originalChildren }) {
-  const children = <RootBaseContextProvider children={originalChildren} />
+export function useRouteContext() {
+  const context = React.useContext(baseContext)
+  if (!context) throw new Error('Please use a `LocationProvider` to supply a context')
+  return context.context
+}
+
+function LocationProvider({
+  basePath,
+  initialLocation = undefined,
+  children: originalChildren,
+  advanced: { context, handlers } = defaultAdvanced,
+}) {
+  const children = <RootBaseContextProvider children={originalChildren} {...{ context, handlers, basePath }} />
 
   return inBrowser
     ? <BrowserLocationProvider {...{ children }} />
@@ -87,31 +115,47 @@ function ServerLocationProvider({ initialLocation, children }) {
   return <locationContext.Provider {...{ value, children }} />
 }
 
-function RootBaseContextProvider({ children }) {
+function RootBaseContextProvider({ children, context, handlers, basePath }) {
+  const contextRef = React.useRef(context)
+  if (contextRef.current !== context) throw new Error('Make sure the given context is stable (does not mutate between renders)')
+
+  const handlersRef = useUpToDateRef(handlers)
+
   const { navigate } = React.useContext(locationContext)
   const value = React.useMemo(
     () => ({
-      basePath: '',
+      basePath,
       baseParams: {},
-      navigate: (to, x) => navigate(resolve('', to), x),
+      navigate: (to, x) => navigate(resolve(basePath, to), x),
+      context,
+      handlers: { // we use a ref with this object as a proxy, this allows handlers to be unstable
+        extractPath(routePath) {
+          return handlersRef.current.extractPath(routePath)
+        },
+        determineNestedContext(context, routePath) {
+          return handlersRef.current.determineNestedContext(context, routePath)
+        },
+      }
     }),
-    [navigate],
+    [navigate, context],
   )
   return <baseContext.Provider {...{ value, children }} />
 }
 
 function NestedBaseContexProvider({ routePath, params, createChildren }) {
-  const { basePath, baseParams, navigate } = React.useContext(baseContext)
+  const { basePath, baseParams, navigate, context, handlers } = React.useContext(baseContext)
   const { pathname } = useLocation()
 
   const value = React.useMemo(
     () => {
-      const newBasePath = pathname === '/' ? '' : pathname.replace(new RegExp(`${params['*']}$`), '')
+      const newBasePath = pathname === `${basePath}/` ? basePath : pathname.replace(new RegExp(`${params['*']}$`), '')
       return {
         // basePath: `${basePath}${routePath}`, // we might want to keep this route path
         basePath: newBasePath,
         baseParams: { ...baseParams, ...params },
-        navigate: (to, x) => navigate(resolve(newBasePath, to), x)
+        navigate: (to, x) => navigate(resolve(newBasePath, to), x),
+        context: handlers.determineNestedContext(context, routePath),
+        handlers,
       }
     },
     [basePath, routePath, navigate, params, baseParams]
@@ -121,24 +165,24 @@ function NestedBaseContexProvider({ routePath, params, createChildren }) {
   return <baseContext.Provider {...{ value, children }} />
 }
 
-function Routing({ routes, initialLocation }) {
+function Routing({ routes, initialLocation, advanced, basePath }) {
   const context = React.useContext(locationContext)
   if (!context && !inBrowser && !initialLocation)
     throw new Error(`Your need to supply an initial location on server side rendering`)
 
   const children = <RoutingImpl {...{ routes }} />
-  return context ? children : <LocationProvider {...{ children, initialLocation }} />
+  return context ? children : <LocationProvider {...{ children, initialLocation, advanced, basePath }} />
 }
 
 function RoutingImpl({ routes }) {
   const { pathname } = useLocation()
-  const { basePath } = React.useContext(baseContext)
+  const { basePath, handlers: { extractPath } } = React.useContext(baseContext)
 
   const mappedRoutes = routes.map(([routePath, createChildren]) =>
-    [routePath, params => <NestedBaseContexProvider {...{ routePath, params, createChildren }} />]
+    [extractPath(routePath), params => <NestedBaseContexProvider {...{ routePath, params, createChildren }} />]
   )
-
   const relativePathname = pathname.replace(basePath, '')
+  console.log(relativePathname, mappedRoutes)
   return pick(relativePathname, ...mappedRoutes)
 }
 
@@ -147,11 +191,12 @@ export function Link({
   replace = undefined,
   state = undefined,
   anchorProps = {},
-  children: originalChildren
+  children: originalChildren,
+  basePath = '',
 }) {
   const context = React.useContext(baseContext)
   const children = <LinkImpl {...{ to, replace, anchorProps, state }} children={originalChildren} />
-  return context ? children : <LocationProvider {...{ children }} />
+  return context ? children : <LocationProvider {...{ children, basePath, advanced: undefined }} />
 }
 
 // TODO: do we really want this to be fixed to an `a`, or do we want to allow it to be a `button`, or something else? (check projects)
@@ -159,8 +204,8 @@ export function Link({
 function LinkImpl({ to, replace, state: newState, anchorProps, children }) {
   const { basePath, navigate } = React.useContext(baseContext)
   const location = useLocation() // might be undefined on server side if Link is used outside of server location context
-
   const href = resolve(basePath, to)
+
   // TODO: should we allow http `to`? And deal with `_target: 'blank'`?
   return <a
     {...anchorProps}
@@ -199,4 +244,10 @@ function shouldNavigate(e) {
     e.button === 0 &&
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
+}
+
+function useUpToDateRef(x) {
+  const ref = React.useRef(x)
+  ref.current = x
+  return ref
 }
