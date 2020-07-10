@@ -68,6 +68,7 @@ function Article({ params: { articleId } }) {
           [path.main, 'Main content'],
           [path.tab1, 'Tab 1'],
           [path.tab2, 'Tab 2'],
+          [path.notFound, 'Not found']
         )}
       </div>
       {route(path.tab1, <div>Side bar for tab 1</div>)}

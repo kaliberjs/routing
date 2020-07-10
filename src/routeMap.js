@@ -12,7 +12,7 @@
 */
 import { pick as originalPick } from './index'
 
-const isRoute = Symbol('route')
+const _ = Symbol('route')
 
 // we need this because when using overrides in `pick`
 export function asRouteMap(map) {
@@ -20,7 +20,7 @@ export function asRouteMap(map) {
 }
 
 export function useRouteMap(map) {
-  if (!map[isRoute]) throw new Error(`Use asRouteMap`)
+  if (!map[_]) throw new Error(`Use asRouteMap`)
   const context = React.useMemo(
     () => {
       const withAbs = addAbs(map)
@@ -38,9 +38,8 @@ export function useRouteMap(map) {
 }
 
 export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
-  if (!routeMap[isRoute]) throw new Error('Please wrap normalize your routeMap using the `asRouteMap` function')
+  if (!routeMap[_]) throw new Error('Please wrap normalize your routeMap using the `asRouteMap` function')
   const routes = routeToRoutes(routeMap, defaultHandler, overrides)
-  console.log('routes', routes)
   return originalPick(pathname, ...Object.entries(routes))
 
   function routeToRoutes(route, defaultHandler, overrides, base = '') {
@@ -64,7 +63,7 @@ export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
 }
 
 function normalize({ path, meta, data, ...children }) {
-  return { [isRoute]: true, path, meta, data, ...normalizeChildren(children) }
+  return { [_]: {}, path, meta, data, ...normalizeChildren(children) }
 
   function normalizeChildren(children) {
     return Object.entries(children).reduce(
@@ -94,27 +93,27 @@ function pathAsString(path) {
   )
 }
 
-function addAbs({ path, meta, data, abs: oldAbs, ...children }, base = '') {
+function addAbs({ [_]: internal, path, meta, data, ...children }, base = '') {
   const abs = makePathAbsolute(path, base)
-  return { path, abs, meta, data, ...addAbsToChildren(children, abs || base) }
-
-  function addAbsToChildren(children, base) {
-    return Object.entries(children).reduce(
-      (result, [k, v]) => ({ ...result, [k]: addAbs(v, base)}),
-      {}
-    )
-  }
+  return { [_]: { abs }, path, meta, data, ...addAbsToChildren(children, abs || base) }
 }
 
-function extractPath(routePath) {
-  if (!routePath.hasOwnProperty('path')) throw new Error(`It seems the route '${JSON.stringify(routePath)}' is not from the route map`)
-  const { path, abs, meta, data, ...children } = routePath
+function addAbsToChildren(children, base = '') {
+  return Object.entries(children).reduce(
+    (result, [k, v]) => ({ ...result, [k]: addAbs(v, base)}),
+    {}
+  )
+}
+function extractPath(route) {
+  if (!route.hasOwnProperty(_)) throw new Error(`It seems the route '${JSON.stringify(route)}' is not from the route map`)
+  const { [_]: { abs }, path, meta, data, ...children } = route
   return `${pathAsString(abs)}${Object.keys(children).length ? '/*' : ''}`
+
 }
 
-function determineNestedContext(context, { path, abs, meta, data, ...children }) {
+function determineNestedContext(context, { [_]: internal, path, meta, data, ...children }) {
   return {
     root: context.root,
-    path: addAbs(children),
+    path: addAbsToChildren(children),
   }
 }

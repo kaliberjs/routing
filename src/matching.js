@@ -1,13 +1,13 @@
 // TODO: we need some tests for this one
 export function pick(pathname, ...routes) {
   const convertedRoutes = routes.map(([routePath, onMatch]) => {
-    if (typeof routePath !== 'string') throw new Error(`Unexpected non-string value '${routePath}' in routes`)
+    if (typeof routePath !== 'string') throw new Error(`Unexpected non-string value '${routePath}' (${routePath.constructor.name}) in routes`)
     const { regExp, paramNames, score } = routePathToRegex(routePath)
     return { regExp, paramNames, onMatch, score }
   })
 
   const sortedRoutes = convertedRoutes.sort((a, b) => b.score - a.score)
-console.log(sortedRoutes)
+
   for (const {regExp, paramNames, onMatch } of sortedRoutes) {
     const matched = match(pathname, { regExp, paramNames })
     if (matched) return callOrReturn(onMatch, matched)

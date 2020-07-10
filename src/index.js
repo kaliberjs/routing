@@ -182,7 +182,7 @@ function RoutingImpl({ routes }) {
     [extractPath(routePath), params => <NestedBaseContexProvider {...{ routePath, params, createChildren }} />]
   )
   const relativePathname = pathname.replace(basePath, '')
-  console.log(relativePathname, mappedRoutes)
+  // console.log(relativePathname, mappedRoutes)
   return pick(relativePathname, ...mappedRoutes)
 }
 

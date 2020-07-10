@@ -19,6 +19,7 @@ export const routeMap = asRouteMap({
         meta: { title: x => `${x.article.title} - €${x.tab1.price}` }
       },
       tab2: 'tab2',
+      notFound: '*',
     },
   },
   notFound: '*',
