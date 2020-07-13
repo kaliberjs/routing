@@ -19,7 +19,7 @@
 */
 
 import { createHistory } from './history'
-import { pick, callOrReturn } from './matching'
+import { pick, callOrReturn, interpolate } from './matching'
 
 /** @type {React.Context<Location | undefined>} */
 const locationContext = React.createContext(undefined)
@@ -53,7 +53,7 @@ export function useRouting({ initialLocation = undefined, advanced = undefined, 
   function routes(...routes) { return <Routing {...{ routes, initialLocation, advanced, basePath }} /> }
 }
 
-export { pick }
+export { pick, interpolate }
 
 export function useLocation() {
   const context = React.useContext(locationContext)

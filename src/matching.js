@@ -19,6 +19,17 @@ export function callOrReturn(x, ...args) {
   return typeof x === 'function' ? x(...args) : x
 }
 
+export function interpolate(routePath, params) {
+  return routePath
+    .replace(/(?:^|\/):([^/]+)/g, (_, paramName) => {
+      console.log(routePath, paramName)
+      const newValue = params[paramName]
+      if (!newValue) throw new Error(`Could not find value for '${paramName}'`)
+      return newValue
+    })
+    .replace(/(\*.*)/, () => params['*'] || '')
+}
+
 match.cache = {}
 function match(pathname, { regExp, paramNames }) {
   const { cache } = match

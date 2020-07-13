@@ -1,52 +1,94 @@
 import { useRouting, Link, useRouteContext, useRelativePick } from '@kaliber/routing'
 import { useRouteMap } from '@kaliber/routing/routeMap'
 import { routeMap } from './routeMap'
+import { useNavigate } from '../../../src'
 
 export default function App({ initialLocation, basePath }) {
   const advanced = useRouteMap(routeMap)
 
   const { routes, context } = useRouting({ initialLocation, advanced, basePath  })
-  const { path, root } = context
+  const { path } = context
 
   // console.log(context)
   return (
-    <>
-      <Navigation {...{ basePath }} />
+    <Language>
+      <Navigation {...{ basePath, path }} />
       {routes(
         [path.home, <Home />],
         [path.articles, <Articles />],
         [path.articles.article, params => <Article {...{ params }} />],
         [path.notFound, params => <NotFound {...{ params }} />],
       )}
-    </>
+    </Language>
   )
 }
 
-function Navigation({ basePath }) {
+const languageContext = React.createContext(null)
+
+function Language({ children }) {
+  const [language, setLanguage] = React.useState('nl')
+  // TODO: find a way to navigate to current route when language changes
+
   return (
     <div>
-      <Link {...{ basePath }} to={''}>Home</Link>
-      <Link {...{ basePath }} to={'articles'}>Articles</Link>
+      <label htmlFor='nl'>NL</label>
+      <input
+        id='nl' name='language' type='radio'
+        checked={language === 'nl'}
+        onChange={e => e.currentTarget.checked && setLanguage('nl')}
+      />
+      <label htmlFor='en'>EN</label>
+      <input
+        id='en' name='language' type='radio'
+        checked={language === 'en'}
+        onChange={e => e.currentTarget.checked && setLanguage('en')}
+      />
+      <div>
+        <languageContext.Provider
+          value={language}
+          {...{ children }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function useLanguage() {
+  const context = React.useContext(languageContext)
+  if (!context) throw new Error('Please use a language context before trying to get the language')
+  return context
+}
+
+function Navigation({ basePath, path }) {
+  const language = useLanguage()
+  return (
+    <div>
+      <Link {...{ basePath }} to={path.home()}>Home</Link>
+      <Link {...{ basePath }} to={path.articles()[language]}>{path.articles.meta.title[language]}</Link>
+      <Link {...{ basePath }} to={path.articles.article({ articleId: 'article1' })[language]}>Featured article</Link>
     </div>
   )
 }
 
 function Home() {
+  const { path } = useRouteContext()
+  const language = useLanguage()
   return (
     <div>
       Home
-      <Link to='articles'>Articles</Link>
+      <Link to={path.articles()[language]}>Articles</Link>
     </div>
   )
 }
 
 function Articles() {
+  const { path } = useRouteContext()
   return (
     <div>
       articles
       <div>
-        <Link to='article1'>article 1</Link><br />
-        <Link to='article2'>article 2</Link>
+        <Link to={path.article({ articleId: 'article1' })}>article 1</Link><br />
+        <Link to={path.article({ articleId: 'article2' })}>article 2</Link>
       </div>
     </div>
   )
@@ -65,9 +107,9 @@ function Article({ params: { articleId } }) {
       <h1>Article {articleId}</h1>
       {atValidTab && (
         <div>
-          <Link to=''>Main</Link>
-          <Link to='tab1'>Tab1</Link>
-          <Link to='tab2'>Tab2</Link>
+          <Link to={path.main()}>Main</Link>
+          <Link to={path.tab1()}>Tab1</Link>
+          <Link to={path.tab2()}>Tab2</Link>
         </div>
       )}
       <div>

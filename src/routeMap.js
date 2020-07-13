@@ -11,6 +11,7 @@
   - Should be compatible with component thinking
 */
 import { pick as originalPick } from './index'
+import { interpolate } from './matching'
 
 const _ = Symbol('route')
 
@@ -23,10 +24,10 @@ export function useRouteMap(map) {
   if (!map[_]) throw new Error(`Use asRouteMap`)
   const context = React.useMemo(
     () => {
-      const withAbs = addAbs(map)
+      const withParentPaths = addParentPaths(map)
       return {
-        root: withAbs,
-        path: withAbs,
+        root: withParentPaths,
+        path: withParentPaths,
       }
     },
     [map]
@@ -63,7 +64,7 @@ export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
 }
 
 function normalize({ path, meta, data, ...children }) {
-  return { [_]: {}, path, meta, data, ...normalizeChildren(children) }
+  return route({ [_]: {}, path, meta, data, ...normalizeChildren(children) })
 
   function normalizeChildren(children) {
     return Object.entries(children).reduce(
@@ -73,6 +74,49 @@ function normalize({ path, meta, data, ...children }) {
       },
       {}
     )
+  }
+}
+
+// TODO: yean: clean this up
+function route(info) {
+  const { [_]: { parentPaths = [] }, path } = info
+  return Object.assign(route, info)
+
+  function route(params) {
+    console.log(parentPaths, path)
+    const x = [...parentPaths, path].reduce(
+      (base = '', path) => {
+        console.log(base, path)
+        return (
+          base && typeof base === 'object'
+            ? Object.entries(base).reduce(
+            (result, [k, base]) => {
+              const pathValue = interpolate(path[k] || path, params)
+              return {
+                ...result,
+                [k]: base ? `${base}/${pathValue}` : pathValue
+              }
+            },
+            {}
+          )
+          : (
+            path && typeof path === 'object'
+              ? Object.entries(path).reduce(
+                (result, [k, path]) => ({
+                  ...result,
+                  [k]: base ? `${base}/${interpolate(path, params)}` : interpolate(path, params)
+                }),
+                {}
+              )
+              : base ? `${base}/${interpolate(path, params)}` : interpolate(path, params)
+          )
+        )
+      },
+      ''
+    )
+
+    console.log('x', x)
+    return x
   }
 }
 
@@ -93,27 +137,35 @@ function pathAsString(path) {
   )
 }
 
-function addAbs({ [_]: internal, path, meta, data, ...children }, base = '') {
-  const abs = makePathAbsolute(path, base)
-  return { [_]: { abs }, path, meta, data, ...addAbsToChildren(children, abs || base) }
+function addParentPaths({ [_]: internal, path, meta, data, ...children }, parentPaths = []) {
+  return route({
+    [_]: { parentPaths }, path, meta, data,
+    ...addParentPathsToChildren(children, parentPaths.concat(path || []))
+  })
 }
 
-function addAbsToChildren(children, base = '') {
+function addParentPathsToChildren(children, parentPaths = []) {
   return Object.entries(children).reduce(
-    (result, [k, v]) => ({ ...result, [k]: addAbs(v, base)}),
+    (result, [k, v]) => ({ ...result, [k]: addParentPaths(v, parentPaths)}),
     {}
   )
+
 }
+
 function extractPath(route) {
   if (!route.hasOwnProperty(_)) throw new Error(`It seems the route '${JSON.stringify(route)}' is not from the route map`)
-  const { [_]: { abs }, path, meta, data, ...children } = route
-  return `${pathAsString(abs)}${Object.keys(children).length ? '/*' : ''}`
+  const { [_]: { parentPaths }, path, meta, data, ...children } = route
+  const abs = [...parentPaths, path].reduce(
+    (base, path) => makePathAbsolute(path, base),
+    ''
+  )
+  return `${abs}${Object.keys(children).length ? '/*' : ''}`
 
 }
 
 function determineNestedContext(context, { [_]: internal, path, meta, data, ...children }) {
   return {
     root: context.root,
-    path: addAbsToChildren(children),
+    path: addParentPathsToChildren(children),
   }
 }
