@@ -1,4 +1,4 @@
-import { useRouting, Link, useRouteContext } from '@kaliber/routing'
+import { useRouting, Link, useRouteContext, useRelativePick } from '@kaliber/routing'
 import { useRouteMap } from '@kaliber/routing/routeMap'
 import { routeMap } from './routeMap'
 
@@ -55,14 +55,21 @@ function Articles() {
 function Article({ params: { articleId } }) {
   const { routes, route } = useRouting()
   const { path } = useRouteContext()
+  const relativePick = useRelativePick()
+
+  const knownPaths = [path.main, path.tab1, path.tab2]
+  const atValidTab = relativePick(...knownPaths.map(x => [x, true]))
+
   return (
     <div>
       <h1>Article {articleId}</h1>
-      <div>
-        <Link to=''>Main</Link>
-        <Link to='tab1'>Tab1</Link>
-        <Link to='tab2'>Tab2</Link>
-      </div>
+      {atValidTab && (
+        <div>
+          <Link to=''>Main</Link>
+          <Link to='tab1'>Tab1</Link>
+          <Link to='tab2'>Tab2</Link>
+        </div>
+      )}
       <div>
         {routes(
           [path.main, 'Main content'],

@@ -8,14 +8,14 @@
     basePath: string, baseParams: object, navigate: Navigate,
     context: any,
     handlers: {
-      extractPath(routePath: any): string,
-      determineNestedContext(context: any, routePath: any): any,
+      extractPath(route: any): string,
+      determineNestedContext(context: any, route: any): any,
     },
   }} Base
 */
 /**
   @template {unknown} T
-  @typedef {Parameters<(routePath: string, createChildren: ((params: object) => T) | T) => void>} Route<T>
+  @typedef {Parameters<(route: string, createChildren: ((params: object) => T) | T) => void>} Route<T>
 */
 
 import { createHistory } from './history'
@@ -31,8 +31,8 @@ const inBrowser = typeof window !== 'undefined'
 const defaultAdvanced = {
   context: undefined,
   handlers: {
-    extractPath(routePath) { return routePath },
-    determineNestedContext(context, routePath) { return context },
+    extractPath(route) { return route },
+    determineNestedContext(context, route) { return context },
   },
 }
 
@@ -71,6 +71,37 @@ export function useRouteContext() {
   const context = React.useContext(baseContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a context')
   return context.context
+}
+
+export function Link({
+  to,
+  replace = undefined,
+  state = undefined,
+  anchorProps = {},
+  children: originalChildren,
+  basePath = '',
+}) {
+  const context = React.useContext(baseContext)
+  const children = <LinkImpl {...{ to, replace, anchorProps, state }} children={originalChildren} />
+  return context ? children : <LocationProvider {...{ children, basePath, advanced: undefined }} />
+}
+
+export function useRelativePick() {
+  const { pathname } = useLocation()
+  const { basePath, handlers: { extractPath } } = React.useContext(baseContext)
+
+  const relativePick = React.useCallback(
+    (...routes) => {
+      const relativePathname = pathname.replace(basePath, '')
+      return pick(
+        relativePathname,
+        ...routes.map(([route, createResult]) => [extractPath(route), createResult])
+      )
+    },
+    [basePath, extractPath, pathname]
+  )
+
+  return relativePick
 }
 
 function LocationProvider({
@@ -129,11 +160,11 @@ function RootBaseContextProvider({ children, context, handlers, basePath }) {
       navigate: (to, x) => navigate(resolve(basePath, to), x),
       context,
       handlers: { // we use a ref with this object as a proxy, this allows handlers to be unstable
-        extractPath(routePath) {
-          return handlersRef.current.extractPath(routePath)
+        extractPath(route) {
+          return handlersRef.current.extractPath(route)
         },
-        determineNestedContext(context, routePath) {
-          return handlersRef.current.determineNestedContext(context, routePath)
+        determineNestedContext(context, route) {
+          return handlersRef.current.determineNestedContext(context, route)
         },
       }
     }),
@@ -142,7 +173,7 @@ function RootBaseContextProvider({ children, context, handlers, basePath }) {
   return <baseContext.Provider {...{ value, children }} />
 }
 
-function NestedBaseContexProvider({ routePath, params, createChildren }) {
+function NestedBaseContexProvider({ route, params, createChildren }) {
   const { basePath, baseParams, navigate, context, handlers } = React.useContext(baseContext)
   const { pathname } = useLocation()
 
@@ -150,15 +181,14 @@ function NestedBaseContexProvider({ routePath, params, createChildren }) {
     () => {
       const newBasePath = pathname === `${basePath}/` ? basePath : pathname.replace(new RegExp(`${params['*']}$`), '')
       return {
-        // basePath: `${basePath}${routePath}`, // we might want to keep this route path
         basePath: newBasePath,
         baseParams: { ...baseParams, ...params },
         navigate: (to, x) => navigate(resolve(newBasePath, to), x),
-        context: handlers.determineNestedContext(context, routePath),
+        context: handlers.determineNestedContext(context, route),
         handlers,
       }
     },
-    [basePath, routePath, navigate, params, baseParams]
+    [basePath, route, navigate, params, baseParams]
   )
   const children = callOrReturn(createChildren, value.baseParams)
 
@@ -175,28 +205,13 @@ function Routing({ routes, initialLocation, advanced, basePath }) {
 }
 
 function RoutingImpl({ routes }) {
-  const { pathname } = useLocation()
-  const { basePath, handlers: { extractPath } } = React.useContext(baseContext)
+  const relativePick = useRelativePick()
 
-  const mappedRoutes = routes.map(([routePath, createChildren]) =>
-    [extractPath(routePath), params => <NestedBaseContexProvider {...{ routePath, params, createChildren }} />]
+  const mappedRoutes = routes.map(([route, createChildren]) =>
+    [route, params => <NestedBaseContexProvider {...{ route, params, createChildren }} />]
   )
-  const relativePathname = pathname.replace(basePath, '')
-  // console.log(relativePathname, mappedRoutes)
-  return pick(relativePathname, ...mappedRoutes)
-}
 
-export function Link({
-  to,
-  replace = undefined,
-  state = undefined,
-  anchorProps = {},
-  children: originalChildren,
-  basePath = '',
-}) {
-  const context = React.useContext(baseContext)
-  const children = <LinkImpl {...{ to, replace, anchorProps, state }} children={originalChildren} />
-  return context ? children : <LocationProvider {...{ children, basePath, advanced: undefined }} />
+  return relativePick(...mappedRoutes)
 }
 
 // TODO: do we really want this to be fixed to an `a`, or do we want to allow it to be a `button`, or something else? (check projects)
