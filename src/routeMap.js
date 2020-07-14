@@ -11,23 +11,21 @@
   - Should be compatible with component thinking
 */
 import { pick as originalPick } from './index'
-import { interpolate } from './matching'
+import { interpolate, callOrReturn } from './matching'
 
 const _ = Symbol('route')
 
-// we need this because when using overrides in `pick`
 export function asRouteMap(map) {
-  return normalize(map)
+  return addParentPaths(normalize(map))
 }
 
 export function useRouteMap(map) {
   if (!map[_]) throw new Error(`Use asRouteMap`)
   const context = React.useMemo(
     () => {
-      const withParentPaths = addParentPaths(map)
       return {
-        root: withParentPaths,
-        path: withParentPaths,
+        root: map,
+        path: map,
       }
     },
     [map]
@@ -44,12 +42,12 @@ export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
   return originalPick(pathname, ...Object.entries(routes))
 
   function routeToRoutes(route, defaultHandler, overrides, base = '') {
-    const { path, meta, data, ...children } = route
+    const { [_]: internal, path, meta, data, ...children } = route
     if (path) {
       const [override, handler] = overrides.find(([x]) => x === route) || []
       const absolutePath = makePathAbsolute(path, base)
       return {
-        [absolutePath]: override ? handler : defaultHandler,
+        [absolutePath]: params => callOrReturn(override ? handler : defaultHandler, { ...params, route }),
         ...routeChildrenToRoutes(children, absolutePath),
       }
     }  else return routeChildrenToRoutes(children, base)
@@ -77,16 +75,14 @@ function normalize({ path, meta, data, ...children }) {
   }
 }
 
-// TODO: yean: clean this up
+// TODO: yeah: clean this up
 function route(info) {
   const { [_]: { parentPaths = [] }, path } = info
   return Object.assign(route, info)
 
   function route(params) {
-    console.log(parentPaths, path)
-    const x = [...parentPaths, path].reduce(
+    return [...parentPaths, path].reduce(
       (base = '', path) => {
-        console.log(base, path)
         return (
           base && typeof base === 'object'
             ? Object.entries(base).reduce(
@@ -114,9 +110,6 @@ function route(info) {
       },
       ''
     )
-
-    console.log('x', x)
-    return x
   }
 }
 

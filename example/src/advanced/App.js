@@ -1,17 +1,27 @@
-import { useRouting, Link, useRouteContext, useRelativePick } from '@kaliber/routing'
-import { useRouteMap } from '@kaliber/routing/routeMap'
+import { useRouting, Link, useRouteContext, useRelativePick, useHistory } from '@kaliber/routing'
+import { useRouteMap, pick } from '@kaliber/routing/routeMap'
 import { routeMap } from './routeMap'
-import { useNavigate } from '../../../src'
 
 export default function App({ initialLocation, basePath }) {
+  // use the route map as an advanced extension to routing
   const advanced = useRouteMap(routeMap)
 
-  const { routes, context } = useRouting({ initialLocation, advanced, basePath  })
-  const { path } = context
+  /*
+    main routing entrypoint
 
-  // console.log(context)
+    Everything without the `route` or `routes` function has a context (LocationContext) which
+    provides `location` and `navigate` (history functionality). We might want to consider using
+    the <LocationProvider> to make it more obvious that from that point on a location is available.
+  */
+  const { routes, context } = useRouting({ initialLocation, advanced, basePath  })
+
+  // The context (provided by `advanced` provides `path` and `root`)
+  // - path - relative paths
+  // - root - root based paths
+  const { path, root } = context
+
   return (
-    <Language>
+    <Language {...{ basePath }}>
       <Navigation {...{ basePath, path }} />
       {routes(
         [path.home, <Home />],
@@ -25,9 +35,27 @@ export default function App({ initialLocation, basePath }) {
 
 const languageContext = React.createContext(null)
 
-function Language({ children }) {
+function Language({ children, basePath }) {
   const [language, setLanguage] = React.useState('nl')
-  // TODO: find a way to navigate to current route when language changes
+
+  // Temporary workaround for the fact that the `Language` component lives outside the routing context
+  const history = useHistory()
+
+  React.useEffect(
+    () => {
+      // A trick to obtain the current route and the params
+      const { route, ...params } = pick(history.location.pathname.replace(basePath, ''), [routeMap, x => x])
+      // delete * from the params (we don't want to supply that dynamic bit)
+      delete params['*']
+      // construct the route
+      const routePath = route(params)
+      // it might a language dependent or language independent route
+      const targetPath = routePath[language] || routePath
+      // replace the route at the current location
+      history.navigate(`${basePath}/${targetPath}`, { replace: true })
+    },
+    [language, history, basePath]
+  )
 
   return (
     <div>
@@ -71,12 +99,12 @@ function Navigation({ basePath, path }) {
 }
 
 function Home() {
-  const { path } = useRouteContext()
+  const { root } = useRouteContext()
   const language = useLanguage()
   return (
     <div>
       Home
-      <Link to={path.articles()[language]}>Articles</Link>
+      <Link to={root.articles()[language]}>Articles</Link>
     </div>
   )
 }

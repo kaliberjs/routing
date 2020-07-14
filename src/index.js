@@ -73,6 +73,17 @@ export function useRouteContext() {
   return context.context
 }
 
+export function useHistory() {
+  const history = React.useMemo(
+    () => inBrowser ? createHistory() : new DoNotUseHistoryOnServerSide(),
+    []
+  )
+
+  return history
+
+  function DoNotUseHistoryOnServerSide() {}
+}
+
 export function Link({
   to,
   replace = undefined,
@@ -104,6 +115,7 @@ export function useRelativePick() {
   return relativePick
 }
 
+// TODO: export this - and think about the magic context provided by `useRouting`
 function LocationProvider({
   basePath,
   initialLocation = undefined,
@@ -151,7 +163,6 @@ function RootBaseContextProvider({ children, context, handlers, basePath }) {
   if (contextRef.current !== context) throw new Error('Make sure the given context is stable (does not mutate between renders)')
 
   const handlersRef = useUpToDateRef(handlers)
-
   const { navigate } = React.useContext(locationContext)
   const value = React.useMemo(
     () => ({
