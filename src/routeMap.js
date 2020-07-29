@@ -52,7 +52,17 @@ export function extractPathFromRoute(route) {
     ''
   )
   return `${abs}${Object.keys(children).length ? '/*' : ''}`
+  /* TODO:
+   While tricky, I think it should result in something like this for paths with children:
 
+    (child1|child1/subchild1|child1/subchild2|child2/special)
+
+    This would allow us to detect non-existing urls at any level of the tree. And would prevent
+    something like /x/:y/* to match non existing routes after the *.
+
+    Not sure if it is worth the added complexity though. So I think you should first finish with
+    the current feature set.
+   */
 }
 
 export function determineNestedContextForRoute(context, route) {
@@ -121,7 +131,10 @@ function makePathAbsolute(path, base) {
   }
 }
 
-
+// TODO: provide the ability to get all parent routes, this is needed to be able to fetch all data
+// from the parents in the tree.
+//
+// The TODO is done, but it needs to be exposed
 function addParentPaths(route, parentPaths = []) {
   const { children, route: { path, meta, data } } = splitChildren(route)
   return withReverseRouting({

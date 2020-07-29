@@ -8,6 +8,7 @@ import { pickFromRouteMap } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 // TODO, should we add another example directory for advanced and only show the base path concept here?
+// - Yes
 const basePath = '/advanced' // TODO: Get from file name, maybe also add a public path example
 
 Index.routes = {
