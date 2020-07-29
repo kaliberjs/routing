@@ -1,28 +1,20 @@
-import { useRouting, Link, useRouteContext, useRelativePick, useHistory } from '@kaliber/routing'
-import { useRouteMap, pick } from '@kaliber/routing/routeMap'
+import { useRouting, Link, useRouteContext, useRelativePick, useHistory, LocationProvider, pickFromRouteMap } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 export default function App({ initialLocation, basePath }) {
-  // use the route map as an advanced extension to routing
-  const advanced = useRouteMap(routeMap)
+  return (
+    <LocationProvider {...{ initialLocation, basePath, routeMap }}>
+      <Page {...{ basePath }} />
+    </LocationProvider>
+  )
+}
 
-  /*
-    main routing entrypoint
-
-    Everything without the `route` or `routes` function has a context (LocationContext) which
-    provides `location` and `navigate` (history functionality). We might want to consider using
-    the <LocationProvider> to make it more obvious that from that point on a location is available.
-  */
-  const { routes, context } = useRouting({ initialLocation, advanced, basePath  })
-
-  // The context (provided by `advanced` provides `path` and `root`)
-  // - path - relative paths
-  // - root - root based paths
-  const { path, root } = context
+function Page({ basePath }) {
+  const { routes, path } = useRouting()
 
   return (
     <Language {...{ basePath }}>
-      <Navigation {...{ basePath, path }} />
+      <Navigation />
       {routes(
         [path.home, <Home />],
         [path.articles, <Articles />],
@@ -44,7 +36,7 @@ function Language({ children, basePath }) {
   React.useEffect(
     () => {
       // A trick to obtain the current route and the params
-      const { route, ...params } = pick(history.location.pathname.replace(basePath, ''), [routeMap, x => x])
+      const { route, ...params } = pickFromRouteMap(history.location.pathname.replace(basePath, ''), [routeMap, x => x])
       // delete * from the params (we don't want to supply that dynamic bit)
       delete params['*']
       // construct the route
@@ -87,13 +79,14 @@ function useLanguage() {
   return context
 }
 
-function Navigation({ basePath, path }) {
+function Navigation() {
+  const { path } = useRouteContext()
   const language = useLanguage()
   return (
     <div>
-      <Link {...{ basePath }} to={path.home()}>Home</Link>
-      <Link {...{ basePath }} to={path.articles()[language]}>{path.articles.meta.title[language]}</Link>
-      <Link {...{ basePath }} to={path.articles.article({ articleId: 'article1' })[language]}>Featured article</Link>
+      <Link to={path.home()}>Home</Link>
+      <Link to={path.articles()[language]}>{path.articles.meta.title[language]}</Link>
+      <Link to={path.articles.article({ articleId: 'article1' })[language]}>Featured article</Link>
     </div>
   )
 }

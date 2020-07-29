@@ -1,7 +1,16 @@
-import { useRouting, Link, interpolate } from '@kaliber/routing'
+import { useRouting, Link, interpolate, LocationProvider } from '@kaliber/routing'
 
 export default function App({ initialLocation }) {
-  const { routes } = useRouting({ initialLocation })
+  return (
+    <LocationProvider {...{ initialLocation }}>
+      <Page />
+    </LocationProvider>
+  )
+}
+
+function Page() {
+  const { routes } = useRouting()
+
   return (
     <>
       <Navigation />

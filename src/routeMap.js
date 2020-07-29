@@ -10,106 +10,97 @@
   - Allow segmentation (sub-objects available to sub-components)
   - Should be compatible with component thinking
 */
-import { pick as originalPick } from './index'
-import { interpolate, callOrReturn } from './matching'
+import { pick, interpolate, callOrReturn } from './matching'
 
-const _ = Symbol('route')
+export const routeSymbol = Symbol('routeSymbol')
 
-export function asRouteMap(map) {
-  return addParentPaths(normalize(map))
-}
+export function asRouteMap(map) { return addParentPaths(normalize(map)) }
 
-export function useRouteMap(map) {
-  if (!map[_]) throw new Error(`Use asRouteMap`)
-  const context = React.useMemo(
-    () => {
-      return {
-        root: map,
-        path: map,
-      }
-    },
-    [map]
-  )
-  return {
-    context,
-    handlers: { extractPath, determineNestedContext }
-  }
-}
-
-export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
+export function pickFromRouteMap(pathname, [routeMap, defaultHandler], ...overrides) {
   if (!routeMap[_]) throw new Error('Please wrap normalize your routeMap using the `asRouteMap` function')
   const routes = routeToRoutes(routeMap, defaultHandler, overrides)
-  return originalPick(pathname, ...Object.entries(routes))
+  return pick(pathname, ...Object.entries(routes))
 
   function routeToRoutes(route, defaultHandler, overrides, base = '') {
-    const { [_]: internal, path, meta, data, ...children } = route
+    const { children, route: { path } } = splitChildren(route)
     if (path) {
       const [override, handler] = overrides.find(([x]) => x === route) || []
       const absolutePath = makePathAbsolute(path, base)
       return {
-        [absolutePath]: params => callOrReturn(override ? handler : defaultHandler, { ...params, route }),
+        [absolutePath]: params => callOrReturn(
+          override ? handler : defaultHandler,
+          { ...params, route }
+        ),
         ...routeChildrenToRoutes(children, absolutePath),
       }
     }  else return routeChildrenToRoutes(children, base)
 
     function routeChildrenToRoutes(children, base) {
-      return Object.entries(children).reduce(
-        (result, [k, v]) => ({ ...result, ...routeToRoutes(v, defaultHandler, overrides, base) }),
+      return Object.values(children).reduce(
+        (result, child) => ({ ...result, ...routeToRoutes(child, defaultHandler, overrides, base) }),
         {}
       )
     }
   }
 }
 
+export function extractPathFromRoute(route) {
+  if (!route.hasOwnProperty(_)) throw new Error(`It seems the route '${JSON.stringify(route)}' is not from the route map`)
+  const { children, route: { [routeSymbol]: { parentPaths }, path } } = splitChildren(route)
+  const abs = [...parentPaths, path].reduce(
+    (base, path) => makePathAbsolute(path, base),
+    ''
+  )
+  return `${abs}${Object.keys(children).length ? '/*' : ''}`
+
+}
+
+export function determineNestedContextForRoute(context, route) {
+  const { children } = splitChildren(route)
+  return {
+    root: context.root,
+    path: addParentPathsToChildren(children),
+  }
+}
+
 function normalize({ path, meta, data, ...children }) {
-  return route({ [_]: {}, path, meta, data, ...normalizeChildren(children) })
+  return withReverseRouting({ [routeSymbol]: {}, path, meta, data, ...normalizeChildren(children) })
 
   function normalizeChildren(children) {
-    return Object.entries(children).reduce(
-      (result, [k, v]) => {
-        const route = normalize(typeof v === 'string' ? { path: v } : v)
-        return { ...result, [k]: route }
-      },
-      {}
+    return mapValues(children, child =>
+      normalize(typeof child === 'string' ? { path: child } : child)
     )
   }
 }
 
-// TODO: yeah: clean this up
-function route(info) {
-  const { [_]: { parentPaths = [] }, path } = info
-  return Object.assign(route, info)
+function withReverseRouting(route) {
+  const { [routeSymbol]: { parentPaths = [] }, path } = route
+  return Object.assign(reverseRoute, route)
 
-  function route(params) {
+  function reverseRoute(params) {
     return [...parentPaths, path].reduce(
-      (base = '', path) => {
+      (base, path) => {
         return (
-          base && typeof base === 'object'
-            ? Object.entries(base).reduce(
-            (result, [k, base]) => {
-              const pathValue = interpolate(path[k] || path, params)
-              return {
-                ...result,
-                [k]: base ? `${base}/${pathValue}` : pathValue
-              }
-            },
-            {}
-          )
-          : (
-            path && typeof path === 'object'
-              ? Object.entries(path).reduce(
-                (result, [k, path]) => ({
-                  ...result,
-                  [k]: base ? `${base}/${interpolate(path, params)}` : interpolate(path, params)
-                }),
-                {}
-              )
-              : base ? `${base}/${interpolate(path, params)}` : interpolate(path, params)
-          )
+          base && typeof base === 'object' ? resolveBaseObject(path, base, params) :
+          path && typeof path === 'object' ? resolvePathObject(path, base, params) :
+          resolve(path, base, params)
         )
       },
       ''
     )
+
+    function resolveBaseObject(path, base, params) {
+      return mapValues(base, (base, k) => resolve(path[k] || path, base, params))
+    }
+
+    function resolvePathObject(path, base, params) {
+      return mapValues(path, path => resolve(path, base, params))
+    }
+
+    function resolve(path, base, params) {
+      const pathValue = interpolate(path, params)
+      return base ? `${base}/${pathValue}` : pathValue
+    }
   }
 }
 
@@ -120,45 +111,37 @@ function makePathAbsolute(path, base) {
     path ? pathAsString(path) :
     path
   )
+
+  function pathAsString(path) {
+    return (
+      typeof path === 'string' ? path :
+      path ? `(?:${Object.values(path).join('|')})` :
+      path
+    )
+  }
 }
 
-function pathAsString(path) {
-  return (
-    typeof path === 'string' ? path :
-    path ? `(?:${Object.values(path).join('|')})` :
-    path
-  )
-}
 
-function addParentPaths({ [_]: internal, path, meta, data, ...children }, parentPaths = []) {
-  return route({
-    [_]: { parentPaths }, path, meta, data,
+function addParentPaths(route, parentPaths = []) {
+  const { children, route: { path, meta, data } } = splitChildren(route)
+  return withReverseRouting({
+    [routeSymbol]: { parentPaths },
+    path, meta, data,
     ...addParentPathsToChildren(children, parentPaths.concat(path || []))
   })
 }
 
 function addParentPathsToChildren(children, parentPaths = []) {
-  return Object.entries(children).reduce(
-    (result, [k, v]) => ({ ...result, [k]: addParentPaths(v, parentPaths)}),
-    {}
-  )
-
+  return mapValues(children, child => addParentPaths(child, parentPaths))
 }
 
-function extractPath(route) {
-  if (!route.hasOwnProperty(_)) throw new Error(`It seems the route '${JSON.stringify(route)}' is not from the route map`)
-  const { [_]: { parentPaths }, path, meta, data, ...children } = route
-  const abs = [...parentPaths, path].reduce(
-    (base, path) => makePathAbsolute(path, base),
-    ''
-  )
-  return `${abs}${Object.keys(children).length ? '/*' : ''}`
-
+function mapValues(x, f) {
+  return Object.entries(x)
+    .map(([k, v]) => [k, f(v, k, x)])
+    .reduce((result, [k, v]) => ({ ...result, [k]: v }), {})
 }
 
-function determineNestedContext(context, { [_]: internal, path, meta, data, ...children }) {
-  return {
-    root: context.root,
-    path: addParentPathsToChildren(children),
-  }
+function splitChildren(route) {
+  const { [routeSymbol]: internal, path, meta, data, ...children } = route
+  return { route, children }
 }

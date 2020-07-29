@@ -4,7 +4,7 @@ import stylesheet from '@kaliber/build/lib/stylesheet'
 import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
 import App from './App?universal'
-import { pick } from '@kaliber/routing/routeMap'
+import { pickFromRouteMap } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 // TODO, should we add another example directory for advanced and only show the base path concept here?
@@ -13,7 +13,7 @@ const basePath = '/advanced' // TODO: Get from file name, maybe also add a publi
 Index.routes = {
   match(location) {
     const ok = { status: 200 }
-    const result = pick(location.pathname.replace(`${basePath}`, ''),
+    const result = pickFromRouteMap(location.pathname.replace(`${basePath}`, ''),
       [routeMap, ok],
       [routeMap.notFound, { status: 404 }],
       [routeMap.articles.article.notFound, { status: 404 }]
