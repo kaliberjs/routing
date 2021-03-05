@@ -13,9 +13,8 @@ const basePath = '/advanced' // TODO: Get from file name, maybe also add a publi
 
 Index.routes = {
   match(location) {
-    const ok = { status: 200 }
     const result = pickFromRouteMap(location.pathname.replace(`${basePath}`, ''),
-      [routeMap, ok],
+      [routeMap, { status: 200 }],
       [routeMap.notFound, { status: 404 }],
       [routeMap.articles.article.notFound, { status: 404 }]
     )

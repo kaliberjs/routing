@@ -1,22 +1,29 @@
-import { asRouteMap } from '@kaliber/routing'
+import { asRouteMap } from '../../../'
 
 export const routeMap = asRouteMap({
-  home: { path: '', meta: { title: 'Home' } },
+  home: { path: '', data: { title: 'Home' } },
   articles: {
     path: { nl: 'artikelen', en: 'articles' },
-    meta: { title: { nl: 'Artikelen', en: 'Articles' } },
+    data: { title: { nl: 'Artikelen', en: 'Articles' } },
 
-    list: { path: '', data: fetchArticles },
+    list: {
+      path: '',
+      data: async () => ({ articles: await fetchArticles() })
+    },
     article: {
       path: ':articleId',
-      data: fetchArticle,
-      meta: { title: x => x.article.title },
+      data: async ({ params: { articleId } }) => {
+        const article = await fetchArticle({ articleId })
+        return { article, title: article.title }
+      },
 
       main: '',
       tab1: {
         path: 'tab1',
-        data: fetchArticleMetadata,
-        meta: { title: x => `${x.article.title} - €${x.tab1.price}` }
+        data: async ({ data: { article } }) => {
+          const { price } = await fetchArticleMetadata({ article })
+          return { price, title: `${article.title} - €${price}` }
+        },
       },
       tab2: 'tab2',
       notFound: '*',
@@ -25,7 +32,7 @@ export const routeMap = asRouteMap({
   notFound: '*',
 })
 
-async function fetchArticle({ params: { articleId } }) {
+async function fetchArticle({ articleId }) {
   return {
     title: `Artikel ${articleId}`
   }
@@ -38,6 +45,6 @@ async function fetchArticles() {
   ]
 }
 
-async function fetchArticleMetadata({ data: { article } }) {
+async function fetchArticleMetadata({ article }) {
   return { price: 10 }
 }

@@ -107,7 +107,7 @@ export function useRelativePick() {
 export function LocationProvider({
   basePath = '',
   initialLocation = undefined,
-  routeMap = undefined, // TODO: implement
+  routeMap = undefined,
   children: originalChildren,
 }) {
   const children = <RootBaseContextProvider
@@ -201,7 +201,9 @@ function NestedBaseContexProvider({ route, params, createChildren }) {
 
   const value = React.useMemo(
     () => {
-      const newBasePath = pathname === `${basePath}/` ? basePath : pathname.replace(new RegExp(`${params['*']}$`), '')
+      const newBasePath = pathname === `${basePath}/`
+        ? basePath
+        : pathname.replace(new RegExp(`${params['*']}$`), '')
       return {
         basePath: newBasePath,
         baseParams: { ...baseParams, ...params },
