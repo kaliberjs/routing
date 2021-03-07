@@ -5,9 +5,10 @@
     navigate: Navigate
   }} Location
   @typedef {{
-    basePath: string, baseParams: object, navigate: Navigate,
-    context?: { root: object, path: object },
-  }} Base
+    basePath: string,
+    routeMap: object,
+    currentRoute?: object,
+  }} RouteContext
 */
 /**
   @template {unknown} T
@@ -15,45 +16,36 @@
 */
 
 import { createHistory } from './history'
-import { pick, callOrReturn, interpolate } from './matching'
-import {
-  asRouteMap, pickFromRouteMap,
-  routeSymbol, extractPathFromRoute, determineNestedContextForRoute
-} from './routeMap'
+import { callOrReturn } from './utils'
+import { asRouteMap, pick, routeSymbol, interpolate, extractChildren } from './routeMap'
 
 /** @type {React.Context<Location | undefined>} */
 const locationContext = React.createContext(undefined)
-/** @type {React.Context<Base | undefined>} */
-const baseContext = React.createContext(undefined)
+/** @type {React.Context<RouteContext | undefined>} */
+const routeContext = React.createContext(undefined)
 
 const inBrowser = typeof window !== 'undefined'
 
-export { pick, interpolate, asRouteMap, pickFromRouteMap }
+export { pick, asRouteMap, routeSymbol, interpolate }
 
 // TODO: eslint plugin for key warning of pairs
 /** @returns {{
   routes<T>(...routes: Array<Route<T>>): JSX.Element,
   route<T>(...route: Route<T>): JSX.Element
-  root?: object,
-  path?: object,
 }}
 */
 export function useRouting() {
-  const relativePick = useRelativePick()
-  const context = useRouteContext()
+  const pick = usePick()
 
-  return {
-    routes,
-    route(...route) { return routes(route) },
-    ...context,
-  }
+  return { route, routes }
 
+  function route(...route) { return routes(route) }
   function routes(...routes) {
     const mappedRoutes = routes.map(([route, createChildren]) =>
-      [route, params => <NestedBaseContexProvider {...{ route, params, createChildren }} />]
+      [route, params => <ContexProvider {...{ route, params, createChildren }} />]
     )
 
-    return relativePick(...mappedRoutes)
+    return pick(...mappedRoutes)
   }
 }
 
@@ -64,15 +56,25 @@ export function useLocation() {
 }
 
 export function useNavigate() {
-  const context = React.useContext(baseContext)
+  const context = React.useContext(locationContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a navigate function')
   return context.navigate
 }
 
 export function useRouteContext() {
-  const context = React.useContext(baseContext)
+  const context = React.useContext(routeContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a context')
-  return context.context
+  return context
+}
+
+export function useRoutes() {
+  const { routeMap, currentRoute = {} } = useRouteContext()
+  const hasChildren = Boolean(extractChildren(currentRoute).length)
+  return hasChildren ? currentRoute : routeMap
+}
+
+export function useRouteMap() {
+  return useRouteContext().routeMap
 }
 
 export function useHistory() {
@@ -86,48 +88,60 @@ export function useHistory() {
   function DoNotUseHistoryOnServerSide() {}
 }
 
-export function useRelativePick() {
+export function usePick() {
   const { pathname } = useLocation()
-  const { basePath } = React.useContext(baseContext)
+  const { basePath, routeMap } = useRouteContext()
 
-  const relativePick = React.useCallback(
+  return React.useCallback(
     (...routes) => {
+      const availableRoutes = new Map(routes)
       const relativePathname = pathname.replace(basePath, '')
-      return pick(
-        relativePathname,
-        ...routes.map(([route, createResult]) => [extractPath(route), createResult])
-      )
-    },
-    [basePath, pathname]
-  )
+      return pick(relativePathname, [routeMap, selectRoute])
 
-  return relativePick
+      function selectRoute(params, route) {
+        const { parent } = route[routeSymbol]
+        return (
+          availableRoutes.has(route) ? availableRoutes.get(route)(params) :
+          parent ? selectRoute(params, parent) :
+          null
+        )
+      }
+    },
+    [basePath, pathname, routeMap]
+  )
 }
 
 export function LocationProvider({
   basePath = '',
   initialLocation = undefined,
-  routeMap = undefined,
+  routeMap,
   children: originalChildren,
 }) {
-  const children = <RootBaseContextProvider
+  const children = <RootContextProvider
     children={originalChildren}
     {...{ routeMap, basePath }}
   />
 
   return inBrowser
-    ? <BrowserLocationProvider {...{ children }} />
+    ? <BrowserLocationProvider {...{ children, basePath }} />
     : <ServerLocationProvider {...{ children, initialLocation }} />
 }
 
-// TODO: do we really want this to be fixed to an `a`, or do we want to allow it to be a `button`, or something else? (check projects)
-// I think it should be an `a`, it's a link after all.
-export function Link({ to, replace, state: newState, anchorProps, children }) {
-  const { basePath, navigate } = React.useContext(baseContext)
-  const location = useLocation() // might be undefined on server side if Link is used outside of server location context
+export function Link({
+  to,
+  replace = undefined,
+  state: newState = undefined,
+  anchorProps = {},
+  children
+}) {
+  if (typeof to !== 'string') throw new Error(`Parameter 'to' passed to link is not a string: ${to}`)
+  const { basePath } = useRouteContext()
+  const navigate = useNavigate()
+  const location = useLocation()
   const href = resolve(basePath, to)
 
   // TODO: should we allow http `to`? And deal with `_target: 'blank'`?
+  // `_blank` is fine if we don't allow http:// in `to`
   return <a
     {...anchorProps}
     {...{ href, children, onClick }}
@@ -147,7 +161,7 @@ export function Link({ to, replace, state: newState, anchorProps, children }) {
   }
 }
 
-function BrowserLocationProvider({ children }) {
+function BrowserLocationProvider({ children, basePath }) {
   const history = React.useMemo(createHistory, [])
   const [location, setLocation] = React.useState(() => history.location)
 
@@ -157,7 +171,12 @@ function BrowserLocationProvider({ children }) {
   )
 
   const value = React.useMemo(
-    () => ({ location, navigate: history.navigate }),
+    () => ({
+      location,
+      navigate(to, ...rest) {
+        return history.navigate(typeof to === 'string' ? resolve(basePath, to) : to, ...rest)
+      }
+    }),
     [location, history]
   )
 
@@ -178,52 +197,27 @@ function ServerLocationProvider({ initialLocation, children }) {
   return <locationContext.Provider {...{ value, children }} />
 }
 
-function RootBaseContextProvider({ children, routeMap, basePath }) {
+function RootContextProvider({ children, routeMap, basePath }) {
   const contextRef = React.useRef(routeMap)
   if (contextRef.current !== routeMap) throw new Error('Make sure the given context is stable (does not mutate between renders)')
 
-  const { navigate } = React.useContext(locationContext)
   const value = React.useMemo(
-    () => ({
-      basePath,
-      baseParams: {},
-      navigate: (to, x) => navigate(resolve(basePath, to), x),
-      context: { root: routeMap, path: routeMap },
-    }),
-    [navigate, routeMap],
+    () => ({ basePath, routeMap }),
+    [routeMap],
   )
-  return <baseContext.Provider {...{ value, children }} />
+  return <routeContext.Provider {...{ value, children }} />
 }
 
-function NestedBaseContexProvider({ route, params, createChildren }) {
-  const { basePath, baseParams, navigate, context } = React.useContext(baseContext)
-  const { pathname } = useLocation()
+function ContexProvider({ route, params, createChildren }) {
+  const { basePath, routeMap } = useRouteContext()
 
   const value = React.useMemo(
-    () => {
-      const newBasePath = pathname === `${basePath}/`
-        ? basePath
-        : pathname.replace(new RegExp(`${params['*']}$`), '')
-      return {
-        basePath: newBasePath,
-        baseParams: { ...baseParams, ...params },
-        navigate: (to, x) => navigate(resolve(newBasePath, to), x),
-        context: determineNestedContext(context, route),
-      }
-    },
-    [basePath, route, navigate, params, baseParams]
+    () => ({ basePath, routeMap, currentRoute: route }),
+    [basePath, route]
   )
-  const children = callOrReturn(createChildren, value.baseParams)
+  const children = callOrReturn(createChildren, params)
 
-  return <baseContext.Provider {...{ value, children }} />
-}
-
-function determineNestedContext(context, route) {
-  return route[routeSymbol] ? determineNestedContextForRoute(context, route) : context
-}
-
-function extractPath(route) {
-  return route[routeSymbol] ? extractPathFromRoute(route) : route
+  return <routeContext.Provider {...{ value, children }} />
 }
 
 function resolve(basePath, to) {

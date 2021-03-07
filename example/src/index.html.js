@@ -5,15 +5,16 @@ import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
 import App from '/App?universal'
 import { pick } from '@kaliber/routing'
+import { routeMap } from './routeMap'
 
+// TODO we should probably provide an example where the basis for the routemap is taken from the
+// components (static props, like data fetching), we might even be able to take this into account
+// when specifying / inferring types of 'useRouting'
 Index.routes = {
   match(location) {
-    const ok = { status: 200 }
     return pick(location.pathname,
-      ['', ok],
-      ['articles', ok],
-      ['articles/:articleId/*', ok],
-      ['*', { status: 404 }],
+      [routeMap, { status: 200 }],
+      [routeMap.notFound, { status: 404 }],
     )
   }
 }

@@ -10,7 +10,7 @@ export default function App({ initialLocation, basePath }) {
 }
 
 function Page({ basePath }) {
-  const { routes, path } = useRouting()
+  const { routes } = useRouting()
 
   return (
     <Language {...{ basePath }}>

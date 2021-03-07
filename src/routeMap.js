@@ -10,7 +10,6 @@
   - Allow segmentation (sub-objects available to sub-components)
   - Should be compatible with component thinking
 */
-import { interpolate } from './matching'
 import { callOrReturn, mapValues, throwError } from './utils'
 
 export const routeSymbol = Symbol('routeSymbol')
@@ -66,28 +65,48 @@ export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
   return callOrReturn(override ? handler : defaultHandler, params, route)
 }
 
+export function interpolate(routePath, params) {
+  return routePath
+    .replace(/:([^/]+)/g, (_, paramName) => {
+      const newValue = params[paramName]
+      if (!newValue) throw new Error(`Could not find value for '${paramName}'`)
+      return newValue
+    })
+    .replace(/(\*)/, () => params['*'] || '')
+}
+
+// TODO: we could probably make the children a prop of the route under the `routeSymbol`
+export function extractChildren(route) {
+  const { [routeSymbol]: internal, path, data, ...children } = route
+  return Object.values(children)
+}
+
 function pickFromChildren(pathSegments, children, previousParams = {}) {
   const sortedChildren = sort(children)
 
-  const match = matchRoute(pathSegments, sortedChildren)
-  if (!match) return null
-
-  const { route, info: { params, remainingSegments} } = match
-  return remainingSegments.length
-    ? pickFromChildren(remainingSegments, extractChildren(route), params)
-    : { params: { ...previousParams, ...params }, route }
+  const match = matchRoute(pathSegments, sortedChildren, previousParams)
+  return match
 }
 
-function matchRoute(pathSegments, children) {
+function matchRoute(pathSegments, children, previousParams ) {
   for (const route of children) {
     const routeSegments = route.path.split('/').filter(Boolean)
 
     const info = matchRouteSegments(routeSegments, pathSegments)
     if (!info) continue
 
-    const hasChildren = Boolean(extractChildren(route).length)
-    const validMatch = hasChildren || !info.remainingSegments.length
-    if (validMatch) return { info, route }
+    const { params, remainingSegments } = info
+    const children = extractChildren(route)
+    const hasChildren = Boolean(children.length)
+    const hasRemainingSegments = Boolean(remainingSegments.length)
+
+    const potentialMatch = hasChildren || !hasRemainingSegments
+    if (!potentialMatch) continue
+
+    const resultFromChildren = pickFromChildren(remainingSegments, children, params)
+    if (resultFromChildren) return resultFromChildren
+
+    if (!hasRemainingSegments) return { params: { ...previousParams, ...params }, route }
   }
 }
 
@@ -111,7 +130,7 @@ function matchRouteSegment(routeSegment, remainingSegments) {
   const [segment, ...newRemainingSegments] = remainingSegments
 
   const paramMatch = routeSegment.startsWith(':') && segment
-  const wildcardMatch = routeSegment === '*'
+  const wildcardMatch = routeSegment === '*' && segment
   const staticMatch = segment === routeSegment
 
   return (wildcardMatch || paramMatch || staticMatch) && {
@@ -176,9 +195,9 @@ function normalize(routeInput, language, getParent) {
 function withReverseRouting(route, language) {
   return Object.assign(reverseRoute, route)
 
-  function reverseRoute(params, { relativeTo = null } = {}) {
+  function reverseRoute(params) {
     const { path } = route
-    const parentPaths = getParents(route, { upTo: relativeTo }).map(x => x.path)
+    const parentPaths = getParents(route).map(x => x.path)
 
     return [...parentPaths, path].reduce(
       (base, path) => path && typeof path === 'object'
@@ -191,14 +210,9 @@ function withReverseRouting(route, language) {
 
 function resolve(path, base, params) {
   const pathValue = interpolate(path, params)
-  return base ? `${base}/${pathValue}` : pathValue
+  return `${base}/${pathValue}`
 }
 
-function getParents({ [routeSymbol]: { parent } }, { upTo = null } = {}) {
-  return !parent || parent === upTo ? [] : getParents(parent, { upTo }).concat(parent)
-}
-
-function extractChildren(route) {
-  const { [routeSymbol]: internal, path, data, ...children } = route
-  return Object.values(children)
+function getParents({ [routeSymbol]: { parent } }) {
+  return !parent ? [] : getParents(parent).concat(parent)
 }
