@@ -8,6 +8,7 @@
     basePath: string,
     routeMap: object,
     currentRoute?: object,
+    params: object,
   }} RouteContext
 */
 /**
@@ -17,7 +18,7 @@
 
 import { createHistory } from './history'
 import { callOrReturn } from './utils'
-import { asRouteMap, pick, routeSymbol, interpolate, extractChildren } from './routeMap'
+import { asRouteMap, pick, routeSymbol, interpolate, extractChildren, mapRouteChildren } from './routeMap'
 
 /** @type {React.Context<Location | undefined>} */
 const locationContext = React.createContext(undefined)
@@ -27,6 +28,8 @@ const routeContext = React.createContext(undefined)
 const inBrowser = typeof window !== 'undefined'
 
 export { pick, asRouteMap, routeSymbol, interpolate }
+
+const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
 
 // TODO: eslint plugin for key warning of pairs
 /** @returns {{
@@ -68,9 +71,10 @@ export function useRouteContext() {
 }
 
 export function useRoutes() {
-  const { routeMap, currentRoute = {} } = useRouteContext()
+  const { routeMap, currentRoute = {}, params } = useRouteContext()
+  const withParams = partiallyApplyReverseRoutes(currentRoute, params)
   const hasChildren = Boolean(extractChildren(currentRoute).length)
-  return hasChildren ? currentRoute : routeMap
+  return hasChildren ? withParams : routeMap
 }
 
 export function useRouteMap() {
@@ -94,7 +98,9 @@ export function usePick() {
 
   return React.useCallback(
     (...routes) => {
-      const availableRoutes = new Map(routes)
+      const availableRoutes = new Map(
+        routes.map(([route, x]) => [route[wrappedRouteSymbol] || route, x])
+      )
       const relativePathname = pathname.replace(basePath, '')
       return pick(relativePathname, [routeMap, selectRoute])
 
@@ -140,8 +146,6 @@ export function Link({
   const location = useLocation()
   const href = resolve(basePath, to)
 
-  // TODO: should we allow http `to`? And deal with `_target: 'blank'`?
-  // `_blank` is fine if we don't allow http:// in `to`
   return <a
     {...anchorProps}
     {...{ href, children, onClick }}
@@ -202,7 +206,7 @@ function RootContextProvider({ children, routeMap, basePath }) {
   if (contextRef.current !== routeMap) throw new Error('Make sure the given context is stable (does not mutate between renders)')
 
   const value = React.useMemo(
-    () => ({ basePath, routeMap }),
+    () => ({ basePath, routeMap, params: {} }),
     [routeMap],
   )
   return <routeContext.Provider {...{ value, children }} />
@@ -210,9 +214,11 @@ function RootContextProvider({ children, routeMap, basePath }) {
 
 function ContexProvider({ route, params, createChildren }) {
   const { basePath, routeMap } = useRouteContext()
+  const paramsRef = React.useRef(null)
+  paramsRef.current = params // params might not be a stable value
 
   const value = React.useMemo(
-    () => ({ basePath, routeMap, currentRoute: route }),
+    () => ({ basePath, routeMap, currentRoute: route, params: paramsRef.current }),
     [basePath, route]
   )
   const children = callOrReturn(createChildren, params)
@@ -222,6 +228,18 @@ function ContexProvider({ route, params, createChildren }) {
 
 function resolve(basePath, to) {
   return to.startsWith('/') ? to : `${basePath}/${to}`
+}
+
+function partiallyApplyReverseRoutes(route, availableParams) {
+  return Object.assign(
+    reverseRouting,
+    mapRouteChildren(route, x => partiallyApplyReverseRoutes(x, availableParams)),
+    { [wrappedRouteSymbol]: route }
+  )
+
+  function reverseRouting(params) {
+    return route({ ...availableParams, ...params })
+  }
 }
 
 function shallowEqual(o1, o2) {

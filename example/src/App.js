@@ -64,14 +64,14 @@ function Articles() {
 function Article({ params: { id } }) {
   const { routes, route } = useRouting()
   const { main, tab1, tab2 } = useRoutes()
-
+  console.log(main)
   return (
     <div>
       <h1>Article {id}</h1>
       <div>
-        <Link to={main({ id })}>Main</Link>{/* TODO it would be nice if we should not have to supply id */}
-        <Link to={tab1({ id })}>Tab1</Link>{/* TODO it would be nice if we should not have to supply id */}
-        <Link to={tab2({ id })}>Tab2</Link>{/* TODO it would be nice if we should not have to supply id */}
+        <Link to={main()}>Main</Link>
+        <Link to={tab1()}>Tab1</Link>
+        <Link to={tab2()}>Tab2</Link>
       </div>
       <div>
         {routes(

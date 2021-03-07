@@ -81,6 +81,11 @@ export function extractChildren(route) {
   return Object.values(children)
 }
 
+export function mapRouteChildren(route, f) {
+  const { [routeSymbol]: internal, path, data, ...children } = route
+  return mapValues(children, f)
+}
+
 function pickFromChildren(pathSegments, children, previousParams = {}) {
   const sortedChildren = sort(children)
 
