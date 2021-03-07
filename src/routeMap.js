@@ -76,7 +76,7 @@ function interpolate(routePath, params) {
 }
 
 function pickFromChildren(pathSegments, children, previousParams = {}) {
-  const sortedChildren = sort(children)
+  const sortedChildren = sort(children, previousParams)
 
   const match = matchRoute(pathSegments, sortedChildren, previousParams)
   return match
@@ -84,7 +84,8 @@ function pickFromChildren(pathSegments, children, previousParams = {}) {
 
 function matchRoute(pathSegments, children, previousParams ) {
   for (const route of children) {
-    const routeSegments = route[routeSymbol].path.split('/').filter(Boolean)
+    const normalizedPath = normalizePath(route[routeSymbol].path, previousParams.language)
+    const routeSegments = normalizedPath.split('/').filter(Boolean)
 
     const info = matchRouteSegments(routeSegments, pathSegments)
     if (!info) continue
@@ -97,7 +98,7 @@ function matchRoute(pathSegments, children, previousParams ) {
     const potentialMatch = hasChildren || !hasRemainingSegments
     if (!potentialMatch) continue
 
-    const resultFromChildren = pickFromChildren(remainingSegments, children, params)
+    const resultFromChildren = pickFromChildren(remainingSegments, children, { ...previousParams, ...params }) // TODO add a test for adding 'previousParams' here
     if (resultFromChildren) return resultFromChildren
 
     if (!hasRemainingSegments) return { params: { ...previousParams, ...params }, route }
@@ -138,23 +139,25 @@ function matchRouteSegment(routeSegment, remainingSegments) {
   }
 }
 
-function sort(children) {
+function sort(children, previousParams) {
   return children.sort((a, b) => score(b) - score(a))
+
+  function score(route) {
+    const normalizedPath = normalizePath(route[routeSymbol].path, previousParams.language)
+    return normalizedPath.split('/').reduce(
+      (previousScore, segment, i) => {
+        const score =
+          segment === '*' ? -2 :
+          segment.startsWith(':') ? 4 :
+          8
+
+        return previousScore + (score / (i + 1))
+      },
+      0
+    )
+  }
 }
 
-function score(route) {
-  return route[routeSymbol].path.split('/').reduce(
-    (previousScore, segment, i) => {
-      const score =
-        segment === '*' ? -2 :
-        segment.startsWith(':') ? 4 :
-        8
-
-      return previousScore + (score / (i + 1))
-    },
-    0
-  )
-}
 
 /** @param {RouteInputChildren | {}} children */
 function normalizeChildren(children, language, getParent = () => null) {
@@ -169,40 +172,41 @@ function normalize(routeInput, language, getParent) {
   const { path, data = undefined, ...children } = routeInput
   if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)
 
-  const normalizedPath =
-    typeof path === 'string' ? path :
-    language in path ? path[language] :
-    throwError(`Could not find language '${language}' in ${JSON.stringify(path)}`)
-
   const normalizedChildren = normalizeChildren(children, language, () => route)
   const route = withReverseRouting(
     {
       ...normalizedChildren,
       [routeSymbol]: {
-        path: normalizedPath,
+        path,
         data,
-        get parent() { return getParent() },
+        getParent,
+        get parent() { return route[routeSymbol].getParent() },
       },
-    },
-    language
+    }
   )
   return route
 }
 
-function withReverseRouting(route, language) {
+function withReverseRouting(route) {
   return Object.assign(reverseRoute, route)
 
-  function reverseRoute(params) {
+  function reverseRoute(params = {}) {
     const { path } = route[routeSymbol]
     const parentPaths = getParents(route).map(x => x[routeSymbol].path)
 
     return [...parentPaths, path].reduce(
-      (base, path) => path && typeof path === 'object'
-        ? resolve(path[language], base, params)
-        : resolve(path, base, params),
+      (base, path) => resolve(normalizePath(path, params.language), base, params),
       ''
     )
   }
+}
+
+function normalizePath(path, language) {
+  return (
+    typeof path === 'string' ? path :
+    language in path ? path[language] :
+    throwError(`Could not find language '${language}' in ${JSON.stringify(path)}`)
+  )
 }
 
 function resolve(path, base, params) {

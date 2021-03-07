@@ -1,54 +1,39 @@
-import { useRouting, Link, useRouteContext, useRelativePick, useHistory, LocationProvider, pickFromRouteMap } from '@kaliber/routing'
+import { useNavigate, useRoute, usePick, useRouting, useCurrentRoute, Link, routeSymbol, LocationProvider, useRoutes } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 export default function App({ initialLocation, basePath }) {
   return (
     <LocationProvider {...{ initialLocation, basePath, routeMap }}>
-      <Page {...{ basePath }} />
+      <Page />
     </LocationProvider>
   )
 }
 
-function Page({ basePath }) {
-  const { routes } = useRouting()
-
-  return (
-    <Language {...{ basePath }}>
-      <Navigation />
-      {routes(
-        [path.home, <Home />],
-        [path.articles, <Articles />],
-        [path.articles.article, params => <Article {...{ params }} />],
-        [path.notFound, params => <NotFound {...{ params }} />],
-      )}
-    </Language>
+function Page() {
+  const { route, routes } = useRouting()
+  const { language } = useRoutes()
+  const { home, articles, notFound } = language
+  return route(
+    language,
+    ({ language }) => (
+      <Language {...{ language }}>
+        <Navigation />
+        {routes(
+          [home, <Home />], // eslint-disable-line react/jsx-key
+          [articles, <Articles />], // eslint-disable-line react/jsx-key
+          [articles.article, params => <Article {...{ params }} />],
+          [notFound, params => <NotFound {...{ params }} />],
+        )}
+      </Language>
+    )
   )
 }
 
 const languageContext = React.createContext(null)
 
-function Language({ children, basePath }) {
-  const [language, setLanguage] = React.useState('nl')
-
-  // Temporary workaround for the fact that the `Language` component lives outside the routing context
-  const history = useHistory()
-
-  React.useEffect(
-    () => {
-      // A trick to obtain the current route and the params
-      const { route, ...params } = pickFromRouteMap(history.location.pathname.replace(basePath, ''), [routeMap, x => x])
-      // delete * from the params (we don't want to supply that dynamic bit)
-      delete params['*']
-      // construct the route
-      const routePath = route(params)
-      // it might a language dependent or language independent route
-      const targetPath = routePath[language] || routePath
-      // replace the route at the current location
-      history.navigate(`${basePath}/${targetPath}`, { replace: true })
-    },
-    [language, history, basePath]
-  )
-
+function Language({ children, language }) {
+  const navigate = useNavigate()
+  const currentRoute = useCurrentRoute()
   return (
     <div>
       <label htmlFor='nl'>NL</label>
@@ -71,6 +56,10 @@ function Language({ children, basePath }) {
       </div>
     </div>
   )
+
+  function setLanguage(language) {
+    navigate(currentRoute({ language }))
+  }
 }
 
 function useLanguage() {
@@ -80,36 +69,38 @@ function useLanguage() {
 }
 
 function Navigation() {
-  const { path } = useRouteContext()
+  const { home, articles } = useRoutes()
   const language = useLanguage()
   return (
     <div>
-      <Link to={path.home()}>Home</Link>
-      <Link to={path.articles()[language]}>{path.articles.meta.title[language]}</Link>
-      <Link to={path.articles.article({ articleId: 'article1' })[language]}>Featured article</Link>
+      <Link to={home()}>Home</Link>
+      <Link to={articles()}>{articles[routeSymbol].data.title[language]}</Link>
+      <Link to={articles.article({ articleId: 'article1' })}>Featured article</Link>
     </div>
   )
 }
 
 function Home() {
-  const { root } = useRouteContext()
+  const { articles } = useRoutes()
   const language = useLanguage()
   return (
     <div>
       Home
-      <Link to={root.articles()[language]}>Articles</Link>
+      <Link to={articles()}>{articles[routeSymbol].data.title[language]}</Link>
     </div>
   )
 }
 
 function Articles() {
-  const { path } = useRouteContext()
+  const { article } = useRoutes()
+  const articles = useRoute()
+  const language = useLanguage()
   return (
     <div>
-      articles
+      {articles[routeSymbol].data.title[language]}
       <div>
-        <Link to={path.article({ articleId: 'article1' })}>article 1</Link><br />
-        <Link to={path.article({ articleId: 'article2' })}>article 2</Link>
+        <Link to={article({ articleId: 'article1' })}>article 1</Link><br />
+        <Link to={article({ articleId: 'article2' })}>article 2</Link>
       </div>
     </div>
   )
@@ -117,31 +108,31 @@ function Articles() {
 
 function Article({ params: { articleId } }) {
   const { routes, route } = useRouting()
-  const { path } = useRouteContext()
-  const relativePick = useRelativePick()
+  const { main, tab1, tab2, notFound } = useRoutes()
+  const pick = usePick()
 
-  const knownPaths = [path.main, path.tab1, path.tab2]
-  const atValidTab = relativePick(...knownPaths.map(x => [x, true]))
+  const knownPaths = [main, tab1, tab2]
+  const atValidTab = pick(...knownPaths.map(x => [x, true]))
 
   return (
     <div>
       <h1>Article {articleId}</h1>
       {atValidTab && (
         <div>
-          <Link to={path.main()}>Main</Link>
-          <Link to={path.tab1()}>Tab1</Link>
-          <Link to={path.tab2()}>Tab2</Link>
+          <Link to={main()}>Main</Link>
+          <Link to={tab1()}>Tab1</Link>
+          <Link to={tab2()}>Tab2</Link>
         </div>
       )}
       <div>
         {routes(
-          [path.main, 'Main content'],
-          [path.tab1, 'Tab 1'],
-          [path.tab2, 'Tab 2'],
-          [path.notFound, 'Not found']
+          [main, 'Main content'],
+          [tab1, 'Tab 1'],
+          [tab2, 'Tab 2'],
+          [notFound, 'Not found']
         )}
       </div>
-      {route(path.tab1, <div>Side bar for tab 1</div>)}
+      {route(tab1, <div>Side bar for tab 1</div>)}
     </div>
   )
 }

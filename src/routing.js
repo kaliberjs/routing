@@ -74,7 +74,16 @@ export function useRoutes() {
   const { routeMap, currentRoute = null, params } = useRouteContext()
   const routes = currentRoute ? partiallyApplyReverseRoutes(currentRoute, params) : {}
   const hasChildren = Object.values(routes).length
-  return hasChildren ? routes : routeMap
+  const parent = currentRoute && currentRoute[routeSymbol].parent
+  return (
+    hasChildren ? routes :
+    parent ? partiallyApplyReverseRoutes(parent, params) :
+    routeMap
+  )
+}
+
+export function useRoute() {
+  return useRouteContext().currentRoute
 }
 
 export function useRouteMap() {
@@ -104,13 +113,22 @@ export function usePick() {
       function selectRoute(params, route) {
         const { parent } = route[routeSymbol]
         return (
-          availableRoutes.has(route) ? availableRoutes.get(route)(params) :
+          availableRoutes.has(route) ? callOrReturn(availableRoutes.get(route), params) :
           parent ? selectRoute(params, parent) :
           null
         )
       }
     },
     [basePath, pathname, routeMap]
+  )
+}
+
+export function useCurrentRoute() {
+  const { pathname } = useLocation()
+  const { basePath, routeMap } = useRouteContext()
+  const relativePathname = pathname.replace(basePath, '')
+  return pick(relativePathname,
+    [routeMap, (params, route) => partiallyApplyReverseRoutes(route, params)]
   )
 }
 
@@ -178,7 +196,7 @@ function BrowserLocationProvider({ children, basePath }) {
         return history.navigate(typeof to === 'string' ? resolve(basePath, to) : to, ...rest)
       }
     }),
-    [location, history]
+    [location, history, basePath]
   )
 
   return <locationContext.Provider {...{ value, children }} />
@@ -224,14 +242,14 @@ function ContexProvider({ route, params, createChildren }) {
 }
 
 function resolve(basePath, to) {
-  return to.startsWith('/') ? to : `${basePath}/${to}`
+  return `${basePath}${to}`
 }
 
 function partiallyApplyReverseRoutes(route, availableParams) {
   return Object.assign(
     reverseRouting,
     mapValues(route, x => partiallyApplyReverseRoutes(x, availableParams)),
-    { [wrappedRouteSymbol]: route }
+    { [wrappedRouteSymbol]: route, [routeSymbol]: route[routeSymbol] }
   )
 
   function reverseRouting(params) {

@@ -1,35 +1,40 @@
-import { asRouteMap } from '../../../'
+import { asRouteMap } from '@kaliber/routing'
 
 export const routeMap = asRouteMap({
-  home: { path: '', data: { title: 'Home' } },
-  articles: {
-    path: { nl: 'artikelen', en: 'articles' },
-    data: { title: { nl: 'Artikelen', en: 'Articles' } },
+  root: '',
+  language: {
+    path: ':language',
 
-    list: {
-      path: '',
-      data: async () => ({ articles: await fetchArticles() })
-    },
-    article: {
-      path: ':articleId',
-      data: async ({ params: { articleId } }) => {
-        const article = await fetchArticle({ articleId })
-        return { article, title: article.title }
+    home: { path: '', data: { title: 'Home' } },
+    articles: {
+      path: { nl: 'artikelen', en: 'articles' },
+      data: { title: { nl: 'Artikelen', en: 'Articles' } },
+
+      list: {
+        path: '',
+        data: async () => ({ articles: await fetchArticles() })
       },
-
-      main: '',
-      tab1: {
-        path: 'tab1',
-        data: async ({ data: { article } }) => {
-          const { price } = await fetchArticleMetadata({ article })
-          return { price, title: `${article.title} - €${price}` }
+      article: {
+        path: ':articleId',
+        data: async ({ params: { articleId } }) => {
+          const article = await fetchArticle({ articleId })
+          return { article, title: article.title }
         },
+
+        main: '',
+        tab1: {
+          path: 'tab1',
+          data: async ({ data: { article } }) => {
+            const { price } = await fetchArticleMetadata({ article })
+            return { price, title: `${article.title} - €${price}` }
+          },
+        },
+        tab2: 'tab2',
+        notFound: '*',
       },
-      tab2: 'tab2',
-      notFound: '*',
     },
-  },
-  notFound: '*',
+    notFound: '*',
+  }
 })
 
 async function fetchArticle({ articleId }) {

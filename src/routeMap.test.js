@@ -1,6 +1,6 @@
 import { asRouteMap, pick, routeMapSymbol, routeSymbol } from './routeMap'
 
-const { anything } = expect
+const { anything, objectContaining } = expect
 
 describe('asRouteMap', () => {
 
@@ -14,7 +14,7 @@ describe('asRouteMap', () => {
 
       expect(routeMap.x).toBeDefined()
       const { x } = routeMap
-      expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null })
+      expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y', data: undefined, parent: null }))
     })
 
     test('static', () => {
@@ -37,32 +37,45 @@ describe('asRouteMap', () => {
 
         expect(routeMap.x).toBeDefined()
         const { x } = routeMap
-        expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null})
+        expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y' }))
       })
       test('path & data', () => {
         const data = { x: Symbol('data') }
         const { x } = asRouteMap({ x: { path: 'y', data } })
 
-        expect(x[routeSymbol]).toEqual({ path: 'y', data, parent: null })
+        expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y', data }))
+      })
+      test('localized paths error', () => {
+        const map = asRouteMap({
+          x: {
+            path: ':language',
+            y: { path: { en: 'y', nl: 'z'} }
+          }
+        })
+        expect(() => map.x.y({ language: 'de' })).toThrowError(/language/)
       })
       test('localized paths', () => {
         const path = { en: 'y', nl: 'z'}
-        expect(() => asRouteMap({ x: { path } }, 'de')).toThrowError(/language/)
-      })
-      test('localized paths', () => {
-        const path = { en: 'y', nl: 'z'}
-        const { x } = asRouteMap({ x: { path } }, 'en')
-        expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null })
-        const { y } = asRouteMap({ y: { path } }, 'nl')
-        expect(y[routeSymbol]).toEqual({ path: 'z', data: undefined, parent: null })
+        const map = asRouteMap({
+          x: {
+            path: ':language',
+            y: { path }
+          }
+        })
+
+        expect(map.x[routeSymbol]).toEqual(objectContaining({ path: ':language' }))
+        expect(map.x.y[routeSymbol]).toEqual(objectContaining({ path }))
       })
       test('localized paths & data', () => {
         const path = { en: 'y', nl: 'z'}
         const data = { x: Symbol('data') }
-        const { x } = asRouteMap({ x: { path, data } }, 'en')
-        expect(x[routeSymbol]).toEqual({ path: 'y', data, parent: null })
-        const { y } = asRouteMap({ y: { path, data } }, 'nl')
-        expect(y[routeSymbol]).toEqual({ path: 'z', data, parent: null })
+        const map = asRouteMap({
+          x: {
+            path: ':language',
+            y: { path, data }
+          }
+        })
+        expect(map.x.y[routeSymbol]).toEqual(objectContaining({ path, data }))
       })
       test('allow empty path', () => {
         expect(() => asRouteMap({ x: '' })).not.toThrowError()
@@ -74,6 +87,22 @@ describe('asRouteMap', () => {
         expect(() => asRouteMap({ x: 1 })).toThrowError(/path/)
         expect(() => asRouteMap({ x: false })).toThrowError(/path/)
         expect(() => asRouteMap({ x: null })).toThrowError(/path/)
+      })
+      test('language', () => {
+        const map = asRouteMap({
+          language: {
+            path: ':language',
+
+            a: { path: { nl: 'a', en: 'b' } } },
+        })
+
+        expect(pick('nl/a', [map, (_, x) => x])).toBe(map.language.a)
+        expect(map.language.a({ language: 'nl' })).toBe('/nl/a')
+        expect(pick('en/a', [map, (_, x) => x])).toBe(null)
+
+        expect(pick('en/b', [map, (_, x) => x])).toBe(map.language.a)
+        expect(map.language.a({ language: 'en' })).toBe('/en/b')
+        expect(pick('nl/b', [map, (_, x) => x])).toBe(null)
       })
     })
     describe('reverse routing', () => {
@@ -87,17 +116,30 @@ describe('asRouteMap', () => {
       })
       test('localized path static', () => {
         const path = { en: 'a', nl: 'b' }
-        const { x } = asRouteMap({ x: { path } }, 'en')
-        expect(x()).toEqual('/a')
-        const { y } = asRouteMap({ y: { path } }, 'nl')
-        expect(y()).toEqual('/b')
+        const { x } = asRouteMap({ x: { path } })
+        expect(x({ language: 'en' })).toEqual('/a')
+        expect(x({ language: 'nl' })).toEqual('/b')
       })
       test('localized path dynamic', () => {
         const path = { en: 'x/:a/y', nl: 'a/:b/b' }
-        const { x } = asRouteMap({ x: { path } }, 'en')
-        expect(x({ a: 'c', b: 'd' })).toEqual('/x/c/y')
-        const { y } = asRouteMap({ y: { path } }, 'nl')
-        expect(y({ a: 'c', b: 'd' })).toEqual('/a/d/b')
+        const { x } = asRouteMap({ x: { path } })
+        expect(x({ language: 'en', a: 'c', b: 'd' })).toEqual('/x/c/y')
+        expect(x({ language: 'nl', a: 'c', b: 'd' })).toEqual('/a/d/b')
+      })
+      test('automatic language selection', () => {
+        const { x } = asRouteMap({
+          x: {
+            path: ':language',
+
+            y: { path: { en: 'a', nl: 'b' } }
+          }
+        })
+        expect(x({ language: 'en' })).toBe('/en')
+        expect(x.y({ language: 'en' })).toBe('/en/a')
+        expect(x({ language: 'nl' })).toBe('/nl')
+        expect(x.y({ language: 'nl' })).toBe('/nl/b')
+        expect(x({ language: 'de' })).toBe('/de')
+        expect(() => x.y({ language: 'de' })).toThrowError(/language/)
       })
     })
     describe('child routes', () => {
@@ -123,14 +165,12 @@ describe('asRouteMap', () => {
             nested: { path: { en: 'c', nl: 'd' } },
           }
         }
-        const { x } = asRouteMap({ x: map }, 'en')
+        const { x } = asRouteMap({ x: map })
         expect(x()).toBe('/a')
         expect(x.child()).toBe('/a/b')
-        expect(x.child.nested()).toBe('/a/b/c')
-        const { y } = asRouteMap({ y: map }, 'nl')
-        expect(y()).toBe('/a')
-        expect(y.child()).toBe('/a/b')
-        expect(y.child.nested()).toBe('/a/b/d')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/b/c')
+        expect(x.child.nested({ language: 'nl' })).toBe('/a/b/d')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('localized branch', () => {
         const map = {
@@ -140,14 +180,13 @@ describe('asRouteMap', () => {
             nested: 'd',
           }
         }
-        const { x } = asRouteMap({ x: map }, 'en')
+        const { x } = asRouteMap({ x: map })
         expect(x()).toBe('/a')
-        expect(x.child()).toBe('/a/b')
-        expect(x.child.nested()).toBe('/a/b/d')
-        const { y } = asRouteMap({ y: map }, 'nl')
-        expect(y()).toBe('/a')
-        expect(y.child()).toBe('/a/c')
-        expect(y.child.nested()).toBe('/a/c/d')
+        expect(x.child({ language: 'en' })).toBe('/a/b')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/b/d')
+        expect(x.child({ language: 'nl' })).toBe('/a/c')
+        expect(x.child.nested({ language: 'nl' })).toBe('/a/c/d')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('localized root', () => {
         const map = {
@@ -157,14 +196,14 @@ describe('asRouteMap', () => {
             nested: 'd',
           }
         }
-        const { x } = asRouteMap({ x: map }, 'en')
-        expect(x()).toBe('/a')
-        expect(x.child()).toBe('/a/c')
-        expect(x.child.nested()).toBe('/a/c/d')
-        const { y } = asRouteMap({ y: map }, 'nl')
-        expect(y()).toBe('/b')
-        expect(y.child()).toBe('/b/c')
-        expect(y.child.nested()).toBe('/b/c/d')
+        const { x } = asRouteMap({ x: map })
+        expect(x({ language: 'en' })).toBe('/a')
+        expect(x.child({ language: 'en' })).toBe('/a/c')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/c/d')
+        expect(x({ language: 'nl' })).toBe('/b')
+        expect(x.child({ language: 'nl' })).toBe('/b/c')
+        expect(x.child.nested({ language: 'nl' })).toBe('/b/c/d')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('combined dynamic reverse routing', () => {
         const map = {
@@ -174,14 +213,13 @@ describe('asRouteMap', () => {
             nested: ':g/h',
           }
         }
-        const { x } = asRouteMap({ x: map }, 'en')
+        const { x } = asRouteMap({ x: map })
         expect(x({ a: 'i' })).toBe('/i/b')
-        expect(x.child({ a: 'i', c: 'j', d: 'k' })).toBe('/i/b/j/e')
-        expect(x.child.nested({ a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/j/e/l/h')
-        const { y } = asRouteMap({ y: map }, 'nl')
-        expect(y({ a: 'i' })).toBe('/i/b')
-        expect(y.child({ a: 'i', c: 'j', d: 'k' })).toBe('/i/b/k/f')
-        expect(y.child.nested({ a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/k/f/l/h')
+        expect(x.child({ language: 'en', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/j/e')
+        expect(x.child.nested({ language: 'en', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/j/e/l/h')
+        expect(x({ a: 'i' })).toBe('/i/b')
+        expect(x.child({ language: 'nl', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/k/f')
+        expect(x.child.nested({ language: 'nl', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/k/f/l/h')
       })
     })
   })
@@ -193,6 +231,9 @@ describe('pick', () => {
   })
   test('route not found', () => {
     expect(pick('/x', [asRouteMap({ y: 'z' }), 'a'])).toBe(null)
+  })
+  test('route not found dynamic', () => {
+    expect(pick('/x/y', [asRouteMap({ x: { path: ':a', y: 'z' } }), 'a'])).toBe(null)
   })
   describe('found', () => {
     test('static single', () => {
@@ -221,6 +262,18 @@ describe('pick', () => {
       const map = asRouteMap({ a: { path: 'a', b: '' } })
       expect(pick('/a', [map, (_, x) => x])).toBe(map.a.b)
       expect(pick('/a/b', [map, (_, x) => x])).toBe(null)
+    })
+    test('static localized error', () => {
+      const map = asRouteMap({ x: { path: { en: 'y', nl: 'z' } } })
+      expect(() => pick('/z', [map, 'a'])).toThrowError(/language/) // maybe this should be null
+    })
+    test('static localized', () => {
+      const map = asRouteMap({ x: { path: ':language', y: { path: { en: 'y', nl: 'z' } } } })
+      expect(pick('/en/y', [map, 'a'])).toBe('a')
+      expect(pick('/nl/z', [map, 'a'])).toBe('a')
+      expect(pick('/en/z', [map, 'a'])).toBe(null)
+      expect(pick('/nl/y', [map, 'a'])).toBe(null)
+      expect(pick('/de/y', [map, 'a'])).toBe(null)
     })
     test('dynamic single', () => {
       expect(pick('/z', [asRouteMap({ x: ':y' }), x => x])).toEqual({ y: 'z' })
@@ -380,7 +433,6 @@ describe('pick', () => {
       expect(pick('/b', [map, 'a'], [map.b, 'b'])).toBe('b')
       expect(pick('/c', [map, 'a'], [map.b, 'b'])).toBe(null)
     })
-    // TODO: should we allow routes to start (and end) with a /?
   })
 })
 
