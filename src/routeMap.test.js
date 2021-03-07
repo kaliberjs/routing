@@ -1,6 +1,6 @@
-import { asRouteMap, pick, interpolate, routeMapSymbol, routeSymbol } from './routeMap'
+import { asRouteMap, pick, routeMapSymbol, routeSymbol } from './routeMap'
 
-const { anything, any, objectContaining } = expect
+const { anything } = expect
 
 describe('asRouteMap', () => {
 
@@ -14,20 +14,18 @@ describe('asRouteMap', () => {
 
       expect(routeMap.x).toBeDefined()
       const { x } = routeMap
-      expect(x[routeSymbol]).toEqual(anything())
-      expect(x.path).toBe('y')
-      expect(x.data).toBe(undefined)
+      expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null })
     })
 
     test('static', () => {
       const { x } = asRouteMap({ x: 'y' })
-      expect(x.path).toBe('y')
+      expect(x[routeSymbol]).toHaveProperty('path', 'y')
       expect(x()).toBe('/y')
     })
 
     test('dynamic', () => {
       const { x } = asRouteMap({ x: 'a/:x/b' })
-      expect(x.path).toBe('a/:x/b')
+      expect(x[routeSymbol]).toHaveProperty('path', 'a/:x/b')
       expect(x({ x: 'y' })).toBe('/a/y/b')
     })
   })
@@ -39,16 +37,13 @@ describe('asRouteMap', () => {
 
         expect(routeMap.x).toBeDefined()
         const { x } = routeMap
-        expect(x[routeSymbol]).toEqual(anything())
-        expect(x.path).toBe('y')
-        expect(x.data).toBeUndefined()
+        expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null})
       })
       test('path & data', () => {
         const data = { x: Symbol('data') }
         const { x } = asRouteMap({ x: { path: 'y', data } })
 
-        expect(x.path).toBe('y')
-        expect(x.data).toBe(data)
+        expect(x[routeSymbol]).toEqual({ path: 'y', data, parent: null })
       })
       test('localized paths', () => {
         const path = { en: 'y', nl: 'z'}
@@ -57,21 +52,17 @@ describe('asRouteMap', () => {
       test('localized paths', () => {
         const path = { en: 'y', nl: 'z'}
         const { x } = asRouteMap({ x: { path } }, 'en')
-        expect(x.path).toBe('y')
-        expect(x.data).toBeUndefined()
+        expect(x[routeSymbol]).toEqual({ path: 'y', data: undefined, parent: null })
         const { y } = asRouteMap({ y: { path } }, 'nl')
-        expect(y.path).toBe('z')
-        expect(y.data).toBeUndefined()
+        expect(y[routeSymbol]).toEqual({ path: 'z', data: undefined, parent: null })
       })
       test('localized paths & data', () => {
         const path = { en: 'y', nl: 'z'}
         const data = { x: Symbol('data') }
         const { x } = asRouteMap({ x: { path, data } }, 'en')
-        expect(x.path).toBe('y')
-        expect(x.data).toBe(data)
+        expect(x[routeSymbol]).toEqual({ path: 'y', data, parent: null })
         const { y } = asRouteMap({ y: { path, data } }, 'nl')
-        expect(y.path).toBe('z')
-        expect(y.data).toBe(data)
+        expect(y[routeSymbol]).toEqual({ path: 'z', data, parent: null })
       })
       test('allow empty path', () => {
         expect(() => asRouteMap({ x: '' })).not.toThrowError()
@@ -113,7 +104,7 @@ describe('asRouteMap', () => {
       test('minimal', () => {
         const { x } = asRouteMap({ x: { path: 'y', child: 'z' } })
         expect(x.child).toBeDefined()
-        expect(x.child.path).toBe('z')
+        expect(x.child[routeSymbol].path).toBe('z')
         expect(x()).toBe('/y')
         expect(x.child()).toBe('/y/z')
       })
@@ -395,23 +386,39 @@ describe('pick', () => {
 
 describe('interpolate', () => {
   test('no interpolation', () => {
-    expect(interpolate('')).toBe('')
-    expect(interpolate('abc')).toBe('abc')
-    expect(interpolate('abc/def')).toBe('abc/def')
-    expect(interpolate('abc/def/ghi')).toBe('abc/def/ghi')
+    const { a, b, c, d } = asRouteMap({ a: '', b: 'abc', c: 'abc/def', d: 'abc/def/ghi' })
+    expect(a()).toBe('/')
+    expect(b()).toBe('/abc')
+    expect(c()).toBe('/abc/def')
+    expect(d()).toBe('/abc/def/ghi')
   })
   test('interpolation', () => {
-    expect(interpolate(':a', { a: 'b' })).toBe('b')
-    expect(interpolate('*', { '*': 'b' })).toBe('b')
-    expect(interpolate(':a/b', { a: 'b' })).toBe('b/b')
-    expect(interpolate('b/:a', { a: 'b' })).toBe('b/b')
-    expect(interpolate('b/*', { '*': 'b' })).toBe('b/b')
-    expect(interpolate(':a/:a', { a: 'b' })).toBe('b/b')
-    expect(interpolate(':a/*', { a: 'b', '*': 'c' })).toBe('b/c')
-    expect(interpolate('a/:a/b', { a: 'b' })).toBe('a/b/b')
-    expect(interpolate('a/:a/b/*', { a: 'b', '*': 'c' })).toBe('a/b/b/c')
-    expect(interpolate('a/abc:def/b', { def: 'ghi' })).toBe('a/abcghi/b')
-    expect(interpolate('a/abc:def/b/*', { def: 'ghi', '*': 'j' })).toBe('a/abcghi/b/j')
+    const { a, b, c, d, e, f, g, h, i, j, k } = asRouteMap({
+      a: ':a',
+      b: '*',
+      c: ':a/b',
+      d: 'b/:a',
+      e: 'b/*',
+      f: ':a/:a',
+      g: ':a/*',
+      h: 'a/:a/b',
+      i: 'a/:a/b/*',
+      // don't use these in real routes:
+      j: 'a/abc:def/b',
+      k: 'a/abc:def/b/*',
+    })
+
+    expect(a({ a: 'b' })).toBe('/b')
+    expect(b({ '*': 'b' })).toBe('/b')
+    expect(c({ a: 'b' })).toBe('/b/b')
+    expect(d({ a: 'b' })).toBe('/b/b')
+    expect(e({ '*': 'b' })).toBe('/b/b')
+    expect(f({ a: 'b' })).toBe('/b/b')
+    expect(g({ a: 'b', '*': 'c' })).toBe('/b/c')
+    expect(h({ a: 'b' })).toBe('/a/b/b')
+    expect(i({ a: 'b', '*': 'c' })).toBe('/a/b/b/c')
+    expect(j({ def: 'ghi' })).toBe('/a/abcghi/b')
+    expect(k({ def: 'ghi', '*': 'j' })).toBe('/a/abcghi/b/j')
   })
 })
 

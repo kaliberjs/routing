@@ -64,7 +64,6 @@ function Articles() {
 function Article({ params: { id } }) {
   const { routes, route } = useRouting()
   const { main, tab1, tab2 } = useRoutes()
-  console.log(main)
   return (
     <div>
       <h1>Article {id}</h1>

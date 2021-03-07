@@ -65,7 +65,7 @@ export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
   return callOrReturn(override ? handler : defaultHandler, params, route)
 }
 
-export function interpolate(routePath, params) {
+function interpolate(routePath, params) {
   return routePath
     .replace(/:([^/]+)/g, (_, paramName) => {
       const newValue = params[paramName]
@@ -73,17 +73,6 @@ export function interpolate(routePath, params) {
       return newValue
     })
     .replace(/(\*)/, () => params['*'] || '')
-}
-
-// TODO: we could probably make the children a prop of the route under the `routeSymbol`
-export function extractChildren(route) {
-  const { [routeSymbol]: internal, path, data, ...children } = route
-  return Object.values(children)
-}
-
-export function mapRouteChildren(route, f) {
-  const { [routeSymbol]: internal, path, data, ...children } = route
-  return mapValues(children, f)
 }
 
 function pickFromChildren(pathSegments, children, previousParams = {}) {
@@ -95,13 +84,13 @@ function pickFromChildren(pathSegments, children, previousParams = {}) {
 
 function matchRoute(pathSegments, children, previousParams ) {
   for (const route of children) {
-    const routeSegments = route.path.split('/').filter(Boolean)
+    const routeSegments = route[routeSymbol].path.split('/').filter(Boolean)
 
     const info = matchRouteSegments(routeSegments, pathSegments)
     if (!info) continue
 
     const { params, remainingSegments } = info
-    const children = extractChildren(route)
+    const children = Object.values(route)
     const hasChildren = Boolean(children.length)
     const hasRemainingSegments = Boolean(remainingSegments.length)
 
@@ -153,8 +142,8 @@ function sort(children) {
   return children.sort((a, b) => score(b) - score(a))
 }
 
-function score(x) {
-  return x.path.split('/').reduce(
+function score(route) {
+  return route[routeSymbol].path.split('/').reduce(
     (previousScore, segment, i) => {
       const score =
         segment === '*' ? -2 :
@@ -185,12 +174,15 @@ function normalize(routeInput, language, getParent) {
     language in path ? path[language] :
     throwError(`Could not find language '${language}' in ${JSON.stringify(path)}`)
 
+  const normalizedChildren = normalizeChildren(children, language, () => route)
   const route = withReverseRouting(
     {
-      path: normalizedPath,
-      data,
-      ...normalizeChildren(children, language, () => route),
-      [routeSymbol]: { get parent() { return getParent() } },
+      ...normalizedChildren,
+      [routeSymbol]: {
+        path: normalizedPath,
+        data,
+        get parent() { return getParent() },
+      },
     },
     language
   )
@@ -201,8 +193,8 @@ function withReverseRouting(route, language) {
   return Object.assign(reverseRoute, route)
 
   function reverseRoute(params) {
-    const { path } = route
-    const parentPaths = getParents(route).map(x => x.path)
+    const { path } = route[routeSymbol]
+    const parentPaths = getParents(route).map(x => x[routeSymbol].path)
 
     return [...parentPaths, path].reduce(
       (base, path) => path && typeof path === 'object'

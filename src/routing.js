@@ -17,8 +17,8 @@
 */
 
 import { createHistory } from './history'
-import { callOrReturn } from './utils'
-import { asRouteMap, pick, routeSymbol, interpolate, extractChildren, mapRouteChildren } from './routeMap'
+import { callOrReturn, mapValues } from './utils'
+import { asRouteMap, pick, routeSymbol } from './routeMap'
 
 /** @type {React.Context<Location | undefined>} */
 const locationContext = React.createContext(undefined)
@@ -27,7 +27,7 @@ const routeContext = React.createContext(undefined)
 
 const inBrowser = typeof window !== 'undefined'
 
-export { pick, asRouteMap, routeSymbol, interpolate }
+export { pick, asRouteMap, routeSymbol }
 
 const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
 
@@ -71,10 +71,10 @@ export function useRouteContext() {
 }
 
 export function useRoutes() {
-  const { routeMap, currentRoute = {}, params } = useRouteContext()
-  const withParams = partiallyApplyReverseRoutes(currentRoute, params)
-  const hasChildren = Boolean(extractChildren(currentRoute).length)
-  return hasChildren ? withParams : routeMap
+  const { routeMap, currentRoute = null, params } = useRouteContext()
+  const routes = currentRoute ? partiallyApplyReverseRoutes(currentRoute, params) : {}
+  const hasChildren = Object.values(routes).length
+  return hasChildren ? routes : routeMap
 }
 
 export function useRouteMap() {
@@ -82,13 +82,10 @@ export function useRouteMap() {
 }
 
 export function useHistory() {
-  const history = React.useMemo(
+  return React.useMemo(
     () => inBrowser ? createHistory() : new DoNotUseHistoryOnServerSide(),
     []
   )
-
-  return history
-
   function DoNotUseHistoryOnServerSide() {}
 }
 
@@ -137,7 +134,7 @@ export function Link({
   to,
   replace = undefined,
   state: newState = undefined,
-  anchorProps = {},
+  anchorProps = null,
   children
 }) {
   if (typeof to !== 'string') throw new Error(`Parameter 'to' passed to link is not a string: ${to}`)
@@ -152,7 +149,7 @@ export function Link({
   />
 
   function onClick(e) {
-    if (anchorProps.onClick) anchorProps.onClick(e)
+    if (anchorProps && anchorProps.onClick) anchorProps.onClick(e)
     if (shouldNavigate(e)) {
       e.preventDefault()
       const { pathname, state: currentState } = location
@@ -233,7 +230,7 @@ function resolve(basePath, to) {
 function partiallyApplyReverseRoutes(route, availableParams) {
   return Object.assign(
     reverseRouting,
-    mapRouteChildren(route, x => partiallyApplyReverseRoutes(x, availableParams)),
+    mapValues(route, x => partiallyApplyReverseRoutes(x, availableParams)),
     { [wrappedRouteSymbol]: route }
   )
 
