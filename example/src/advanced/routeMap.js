@@ -1,5 +1,4 @@
-import { asRouteMap } from '@kaliber/routing'
-
+import { asRouteMap, routeSymbol } from '../../../'
 export const routeMap = asRouteMap({
   root: '',
   language: {
