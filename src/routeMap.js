@@ -76,18 +76,20 @@ function interpolate(routePath, params) {
 }
 
 function pickFromChildren(pathSegments, children, previousParams = {}) {
-  const sortedChildren = sort(children, previousParams)
+  const preparedChildren = children
+    .map(route => {
+      const path = normalizePath(route[routeSymbol].path, previousParams.language)
+      if (path === null) return null
 
-  const match = matchRoute(pathSegments, sortedChildren, previousParams)
-  return match
-}
+      return { route, routeSegments: path.split('/') }
+    })
+    .filter(Boolean)
+    .sort((a, b) => score(b.routeSegments) - score(a.routeSegments))
 
-function matchRoute(pathSegments, children, previousParams ) {
-  for (const route of children) {
-    const normalizedPath = normalizePath(route[routeSymbol].path, previousParams.language)
-    const routeSegments = normalizedPath.split('/').filter(Boolean)
+  for (const { route, routeSegments } of preparedChildren) {
+    const nonEmptyRouteSegments = routeSegments.filter(Boolean)
 
-    const info = matchRouteSegments(routeSegments, pathSegments)
+    const info = matchRouteSegments(nonEmptyRouteSegments, pathSegments)
     if (!info) continue
 
     const { params, remainingSegments } = info
@@ -139,23 +141,18 @@ function matchRouteSegment(routeSegment, remainingSegments) {
   }
 }
 
-function sort(children, previousParams) {
-  return children.sort((a, b) => score(b) - score(a))
+function score(routeSegments) {
+  return routeSegments.reduce(
+    (previousScore, segment, i) => {
+      const score =
+        segment === '*' ? -2 :
+        segment.startsWith(':') ? 4 :
+        8
 
-  function score(route) {
-    const normalizedPath = normalizePath(route[routeSymbol].path, previousParams.language)
-    return normalizedPath.split('/').reduce(
-      (previousScore, segment, i) => {
-        const score =
-          segment === '*' ? -2 :
-          segment.startsWith(':') ? 4 :
-          8
-
-        return previousScore + (score / (i + 1))
-      },
-      0
-    )
-  }
+      return previousScore + (score / (i + 1))
+    },
+    0
+  )
 }
 
 
@@ -179,8 +176,7 @@ function normalize(routeInput, language, getParent) {
       [routeSymbol]: {
         path,
         data,
-        getParent,
-        get parent() { return route[routeSymbol].getParent() },
+        get parent() { return getParent() },
       },
     }
   )
@@ -195,7 +191,12 @@ function withReverseRouting(route) {
     const parentPaths = getParents(route).map(x => x[routeSymbol].path)
 
     return [...parentPaths, path].reduce(
-      (base, path) => resolve(normalizePath(path, params.language), base, params),
+      (base, path) => {
+        const { language } = params
+        const normalizedPath = normalizePath(path, language)
+        if (normalizedPath === null) throwError(`Could not determine path from ${JSON.stringify(path)} with language ${language}`)
+        return resolve(normalizedPath, base, params)
+      },
       ''
     )
   }
@@ -205,7 +206,7 @@ function normalizePath(path, language) {
   return (
     typeof path === 'string' ? path :
     language in path ? path[language] :
-    throwError(`Could not find language '${language}' in ${JSON.stringify(path)}`)
+    null
   )
 }
 

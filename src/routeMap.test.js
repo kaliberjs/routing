@@ -265,7 +265,7 @@ describe('pick', () => {
     })
     test('static localized error', () => {
       const map = asRouteMap({ x: { path: { en: 'y', nl: 'z' } } })
-      expect(() => pick('/z', [map, 'a'])).toThrowError(/language/) // maybe this should be null
+      expect(pick('/z', [map, 'a'])).toBe(null)
     })
     test('static localized', () => {
       const map = asRouteMap({ x: { path: ':language', y: { path: { en: 'y', nl: 'z' } } } })
