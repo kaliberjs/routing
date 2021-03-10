@@ -15,35 +15,6 @@ import { callOrReturn, mapValues, throwError } from './utils'
 export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
-/**
- * TODO: move this to a type definition file and make it better, the outcome should not be generic
- * objects, but should reflect the exact structure.
- *
- * @typedef {{ [k: string]: any }} SimpleObject
- * @typedef {{ [k: string]: string }} StringyObject
- *
- * @typedef {SimpleObject} ParentData
- * @typedef {(props?: { params: StringyObject, data: ParentData }) => Promise<SimpleObject>} DataFunction
- * @typedef {{ [k: string]: RouteInput }} RouteInputChildren
- * @typedef {{
-     path: string | { [language: string]: string }
-     data?: DataFunction | SimpleObject
-   }} BaseRoute
- * @typedef {string | BaseRoute | (BaseRoute & RouteInputChildren)} RouteInput
- *
- * @typedef {(params?: StringyObject) => string} ReverseRoute
- * @typedef {{ [k: string]: Route }} RouteChildren
- * @typedef {
-     ReverseRoute &
-     BaseRoute &
-     RouteChildren &
-     { [x: typeof routeSymbol]: { parentRoutes } }
-  } Route
- *
- * @param {{ [k: string]: RouteInput }} map
- *
- * @returns {{ [k: string]: Route }}
- */
 export function asRouteMap(map, language = undefined) {
   return {
     ...normalizeChildren(map, language),
@@ -52,17 +23,22 @@ export function asRouteMap(map, language = undefined) {
 }
 
 export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
-  if (!routeMap.hasOwnProperty(routeMapSymbol))
-    throw new Error('Please normalize your routeMap using the `asRouteMap` function')
-
-  const pathSegments = pathname.split('/').filter(Boolean)
-  const children = Object.values(routeMap)
-  const result = pickFromChildren(pathSegments, children)
+  const result = pickRoute(pathname, routeMap)
   if (!result) return null
 
   const { route, params } = result
   const [override, handler] = overrides.find(([x]) => x === route) || []
   return callOrReturn(override ? handler : defaultHandler, params, route)
+}
+
+export function pickRoute(pathname, routeMap) {
+  if (!routeMap.hasOwnProperty(routeMapSymbol))
+  throw new Error('Please normalize your routeMap using the `asRouteMap` function')
+
+  const pathSegments = pathname.split('/').filter(Boolean)
+  const children = Object.values(routeMap)
+  const result = pickFromChildren(pathSegments, children)
+  return result ? result : null
 }
 
 function interpolate(routePath, params) {
@@ -156,7 +132,6 @@ function score(routeSegments) {
 }
 
 
-/** @param {RouteInputChildren | {}} children */
 function normalizeChildren(children, language, getParent = () => null) {
   return mapValues(children, childOrPath => {
     const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
@@ -164,7 +139,6 @@ function normalizeChildren(children, language, getParent = () => null) {
   })
 }
 
-/** @param {BaseRoute | (BaseRoute & RouteInputChildren)} routeInput */
 function normalize(routeInput, language, getParent) {
   const { path, data = undefined, ...children } = routeInput
   if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)

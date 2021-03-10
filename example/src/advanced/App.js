@@ -1,4 +1,4 @@
-import { useNavigate, useRoute, usePick, useRouting, useCurrentRoute, Link, routeSymbol, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, routeSymbol, LocationProvider, useRoutes } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 export default function App({ initialLocation, basePath }) {
@@ -33,7 +33,7 @@ const languageContext = React.createContext(null)
 
 function Language({ children, language }) {
   const navigate = useNavigate()
-  const currentRoute = useCurrentRoute()
+  const { route } = useMatch()
   return (
     <div>
       <label htmlFor='nl'>NL</label>
@@ -58,7 +58,7 @@ function Language({ children, language }) {
   )
 
   function setLanguage(language) {
-    navigate(currentRoute({ language }))
+    navigate(route({ language }))
   }
 }
 
@@ -111,8 +111,7 @@ function Article({ params: { articleId } }) {
   const { main, tab1, tab2, notFound } = useRoutes()
   const pick = usePick()
 
-  const knownPaths = [main, tab1, tab2]
-  const atValidTab = pick(...knownPaths.map(x => [x, true]))
+  const atValidTab = Boolean(pick(main, tab1, tab2))
 
   return (
     <div>

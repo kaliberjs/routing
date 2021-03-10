@@ -1,12 +1,12 @@
 // copied from https://github.com/reach/router/blob/master/src/lib/history.js
-createHistory.singleton = null
-export function createHistory() {
-  if (createHistory.singleton) return createHistory.singleton
+getHistory.singleton = null
+export function getHistory() {
+  if (getHistory.singleton) return getHistory.singleton
 
   let listeners = []
   let location = getLocation()
 
-  return createHistory.singleton = {
+  return getHistory.singleton = {
     get location() { return location },
 
     listen(listener) {
