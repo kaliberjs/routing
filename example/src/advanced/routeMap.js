@@ -1,6 +1,7 @@
-import { asRouteMap, routeSymbol } from '../../../'
+import { asRouteMap } from '@kaliber/routing'
 export const routeMap = asRouteMap({
   root: '',
+  test: { path: '' },
   language: {
     path: ':language',
 
@@ -15,15 +16,12 @@ export const routeMap = asRouteMap({
       },
       article: {
         path: ':articleId',
-        data: async ({ params: { articleId } }) => {
-          const article = await fetchArticle({ articleId })
-          return { article, title: article.title }
-        },
+        data: async ({ articleId }) => ({ article: await fetchArticle({ articleId }) }),
 
         main: '',
         tab1: {
           path: 'tab1',
-          data: async ({ data: { article } }) => {
+          data: async ({ article }) => {
             const { price } = await fetchArticleMetadata({ article })
             return { price, title: `${article.title} - €${price}` }
           },
@@ -35,14 +33,18 @@ export const routeMap = asRouteMap({
     notFound: '*',
   }
 })
-
 async function fetchArticle({ articleId }) {
+  await second(1)
+
   return {
-    title: `Artikel ${articleId}`
+    title: `Artikel ${articleId}`,
+    id: 'article1',
   }
 }
 
 async function fetchArticles() {
+  await second(1)
+
   return [
     { title: `Artikel article1`, id: 'article1' },
     { title: `Artikel article2`, id: 'article2' },
@@ -50,5 +52,8 @@ async function fetchArticles() {
 }
 
 async function fetchArticleMetadata({ article }) {
+  await second(1)
   return { price: 10 }
 }
+
+async function second(x) { return new Promise(resolve => setTimeout(resolve, x * 1000)) }

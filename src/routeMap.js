@@ -41,6 +41,11 @@ export function pickRoute(pathname, routeMap) {
   return result ? result : null
 }
 
+export function asRouteChain(route) {
+  if (!route) return []
+  return asRouteChain(route[routeSymbol].parent).concat(route)
+}
+
 function interpolate(routePath, params) {
   return routePath
     .replace(/:([^/]+)/g, (_, paramName) => {
@@ -54,7 +59,7 @@ function interpolate(routePath, params) {
 function pickFromChildren(pathSegments, children, previousParams = {}) {
   const preparedChildren = children
     .map(route => {
-      const path = normalizePath(route[routeSymbol].path, previousParams.language)
+      const path = normalizePath(route.path, previousParams.language)
       if (path === null) return null
 
       return { route, routeSegments: path.split('/') }
@@ -131,40 +136,43 @@ function score(routeSegments) {
   )
 }
 
-
-function normalizeChildren(children, language, getParent = () => null) {
-  return mapValues(children, childOrPath => {
+function normalizeChildren(children, language, getParent = () => null, parentName = '') {
+  return mapValues(children, (childOrPath, name) => {
     const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
-    return normalize(route, language, getParent)
+    return normalize(route, language, getParent, parentName ? `${parentName}.${name}` : name)
   })
 }
 
-function normalize(routeInput, language, getParent) {
+function normalize(routeInput, language, getParent, name) {
   const { path, data = undefined, ...children } = routeInput
   if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)
 
-  const normalizedChildren = normalizeChildren(children, language, () => route)
-  const route = withReverseRouting(
-    {
-      ...normalizedChildren,
-      [routeSymbol]: {
-        path,
-        data,
-        get parent() { return getParent() },
-      },
-    }
-  )
+  const normalizedChildren = normalizeChildren(children, language, () => route, name)
+  const route = createRoute(name, path, data, normalizedChildren, getParent)
   return route
 }
 
-function withReverseRouting(route) {
-  return Object.assign(reverseRoute, route)
+function createRoute(name, path, data, children, getParent) {
+  const route = Object.assign(reverseRoute, {
+    ...children,
+    [routeSymbol]: {
+      get parent() { return getParent() },
+    },
+  })
+  Object.defineProperties(route, {
+    toString: {
+      value: function toString() { return name },
+      enumerable: false
+    },
+    path: { value: path, enumerable: false },
+    data: { value: data, enumerable: false },
+  })
+  return route
 
   function reverseRoute(params = {}) {
-    const { path } = route[routeSymbol]
-    const parentPaths = getParents(route).map(x => x[routeSymbol].path)
+    const parentPaths = getParents(route).map(x => x.path)
 
-    return [...parentPaths, path].reduce(
+    return [...parentPaths, route.path].reduce(
       (base, path) => {
         const { language } = params
         const normalizedPath = normalizePath(path, language)

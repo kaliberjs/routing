@@ -1,4 +1,4 @@
-import { asRouteMap, pick, routeMapSymbol, routeSymbol } from './routeMap'
+import { asRouteChain, asRouteMap, pick, routeMapSymbol, routeSymbol } from './routeMap'
 
 const { anything, objectContaining } = expect
 
@@ -14,18 +14,20 @@ describe('asRouteMap', () => {
 
       expect(routeMap.x).toBeDefined()
       const { x } = routeMap
-      expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y', data: undefined, parent: null }))
+      expect(x.path).toBe('y')
+      expect(x.data).toBe(undefined)
+      expect(x[routeSymbol]).toEqual(objectContaining({ parent: null }))
     })
 
     test('static', () => {
       const { x } = asRouteMap({ x: 'y' })
-      expect(x[routeSymbol]).toHaveProperty('path', 'y')
+      expect(x.path).toBe('y')
       expect(x()).toBe('/y')
     })
 
     test('dynamic', () => {
       const { x } = asRouteMap({ x: 'a/:x/b' })
-      expect(x[routeSymbol]).toHaveProperty('path', 'a/:x/b')
+      expect(x.path).toBe('a/:x/b')
       expect(x({ x: 'y' })).toBe('/a/y/b')
     })
   })
@@ -37,13 +39,14 @@ describe('asRouteMap', () => {
 
         expect(routeMap.x).toBeDefined()
         const { x } = routeMap
-        expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y' }))
+        expect(x.path).toBe('y')
       })
       test('path & data', () => {
         const data = { x: Symbol('data') }
         const { x } = asRouteMap({ x: { path: 'y', data } })
 
-        expect(x[routeSymbol]).toEqual(objectContaining({ path: 'y', data }))
+        expect(x.path).toBe('y')
+        expect(x.data).toBe(data)
       })
       test('localized paths error', () => {
         const map = asRouteMap({
@@ -63,8 +66,8 @@ describe('asRouteMap', () => {
           }
         })
 
-        expect(map.x[routeSymbol]).toEqual(objectContaining({ path: ':language' }))
-        expect(map.x.y[routeSymbol]).toEqual(objectContaining({ path }))
+        expect(map.x.path).toBe(':language')
+        expect(map.x.y.path).toBe(path)
       })
       test('localized paths & data', () => {
         const path = { en: 'y', nl: 'z'}
@@ -75,7 +78,8 @@ describe('asRouteMap', () => {
             y: { path, data }
           }
         })
-        expect(map.x.y[routeSymbol]).toEqual(objectContaining({ path, data }))
+        expect(map.x.y.path).toBe(path)
+        expect(map.x.y.data).toBe(data)
       })
       test('allow empty path', () => {
         expect(() => asRouteMap({ x: '' })).not.toThrowError()
@@ -146,7 +150,7 @@ describe('asRouteMap', () => {
       test('minimal', () => {
         const { x } = asRouteMap({ x: { path: 'y', child: 'z' } })
         expect(x.child).toBeDefined()
-        expect(x.child[routeSymbol].path).toBe('z')
+        expect(x.child.path).toBe('z')
         expect(x()).toBe('/y')
         expect(x.child()).toBe('/y/z')
       })
@@ -221,6 +225,16 @@ describe('asRouteMap', () => {
         expect(x.child({ language: 'nl', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/k/f')
         expect(x.child.nested({ language: 'nl', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/k/f/l/h')
       })
+    })
+  })
+  describe('toString', () => {
+    test('single', () => {
+      const { x } = asRouteMap({ x: '' })
+      expect(`${x}`).toBe('x')
+    })
+    test('nested', () => {
+      const { x } = asRouteMap({ x: { path: '', y: '' } })
+      expect(`${x.y}`).toBe('x.y')
     })
   })
 })
@@ -471,6 +485,17 @@ describe('interpolate', () => {
     expect(i({ a: 'b', '*': 'c' })).toBe('/a/b/b/c')
     expect(j({ def: 'ghi' })).toBe('/a/abcghi/b')
     expect(k({ def: 'ghi', '*': 'j' })).toBe('/a/abcghi/b/j')
+  })
+})
+
+describe('asRouteChain', () => {
+  test('single', () => {
+    const { x } = asRouteMap({ x: 'y' })
+    expect(asRouteChain(x)).toEqual([x])
+  })
+  test('nested', () => {
+    const { x } = asRouteMap({ x: { path: 'x', y: 'y' } })
+    expect(asRouteChain(x.y)).toEqual([x, x.y])
   })
 })
 

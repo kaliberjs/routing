@@ -5,6 +5,7 @@ import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
 import App from './App?universal'
 import { pick } from '@kaliber/routing'
+import { fetchRouteData } from './machinery/routeData'
 import { routeMap } from './routeMap'
 
 // TODO, should we add another example directory for advanced and only show the base path concept here?
@@ -12,22 +13,24 @@ import { routeMap } from './routeMap'
 const basePath = '/advanced' // TODO: Get from file name, maybe also add a public path example
 
 Index.routes = {
-  match(location, req) {
+  async match(location, req) {
     const language = req.acceptsLanguages('nl', 'en') || 'nl'
     const languageTarget = `${basePath}${routeMap.language.home({ language })}`
 
     const result = pick(location.pathname.replace(`${basePath}`, ''),
-      [routeMap, { status: 200 }],
+      [routeMap, (params, route) => ({ status: 200, params, route })],
       [routeMap.root, { status: 302, headers: { Location: languageTarget } }],
       [routeMap.language.notFound, { status: 404 }],
       [routeMap.language.articles.article.notFound, { status: 404 }]
     )
 
-    return result
+    return 'route' in result
+      ? { ...result, data: { routeData: await fetchRouteData(result.route, result.params) } }
+      : result
   }
 }
 
-export default function Index({ location, data }) {
+export default function Index({ location, data = { routeData: {} } }) {
   return (
     <html lang='nl'>
       <head>
@@ -40,7 +43,7 @@ export default function Index({ location, data }) {
         {javascript}
       </head>
       <body>
-        <App initialLocation={location} {...{ basePath }} />
+        <App initialLocation={location} initialRouteData={data.routeData} {...{ basePath }} />
       </body>
     </html>
   )

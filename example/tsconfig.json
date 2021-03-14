@@ -2,7 +2,7 @@
   "typeAcquisition": {
     "enable": true
   },
-  "include": ["./src/**/*", "./node_modules/**.*", "./types/**/*", "../src/**/*"],
+  "include": ["./src/**/*", "./node_modules/**.*", "./types/**/*"],
   "compilerOptions": {
     "moduleResolution": "node",
     "resolveJsonModule": true,

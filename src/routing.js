@@ -1,46 +1,40 @@
-/**
-  @typedef {(to: number | string, x?: { state: object, replace?: boolean }) => void} Navigate
-  @typedef {{
-    location: { pathname: string, search: string, hash: string, state?: object },
-    match: null | { params: object, route: object },
-  }} LocationAndMatch
-  @typedef {{
-    basePath: string,
-    routeMap: object,
-  }} RootContext
-  @typedef {object} Route
-*/
-/**
-  @template {unknown} T
-  @typedef {Parameters<(route: string, createChildren: ((params: object) => T) | T) => void>} RoutePair
-*/
 
 import { getHistory } from './history'
 import { callOrReturn, mapValues } from './utils'
-import { asRouteMap, pick, pickRoute, routeSymbol } from './routeMap'
+import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
-/** @type {React.Context<LocationAndMatch | undefined>} */
+/**
+  @type {
+    React.Context<
+      {
+        location: { pathname: string, search: string, hash: string, state?: object },
+        match: null | { params: object, route: object },
+      } |
+      undefined
+    >
+  }
+*/
 const locationContext = React.createContext(undefined)
-/** @type {React.Context<Navigate | undefined>} */
+/** @type {React.Context<((to: number | string, x?: { state: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
-/** @type {React.Context<RootContext | undefined>} */
+/** @type {React.Context<{ basePath: string, routeMap: object } | undefined>} */
 const rootContext = React.createContext(undefined)
 /** @type {React.Context<Route | null>} */
 const routeContext = React.createContext(null)
 
 const inBrowser = typeof window !== 'undefined'
 
-export { pick, asRouteMap, routeSymbol }
-
 const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
 
 // TODO: eslint plugin for key warning of pairs
-/** @returns {{
+/**
+  @template {JSX.Element} T
+  @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
+  @returns {{
   routes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
-  route<T>(...route: RoutePair<T>): JSX.Element
-}}
-*/
+  route<T>(...route: RoutePair<T>): JSX.Element,
+}} */
 export function useRouting() {
   const pick = usePick()
 
@@ -55,7 +49,7 @@ export function useRouting() {
 
     const { route, params } = result
     const children = callOrReturn(routeLookup.get(route), params)
-    return <routeContext.Provider value={route} {...{ children }} />
+    return <routeContext.Provider value={route[wrappedRouteSymbol] || route} {...{ children }} />
   }
 }
 
@@ -260,11 +254,24 @@ function resolve(basePath, to) {
 */
 
 function partiallyApplyReverseRoutes(route, availableParams) {
-  return Object.assign(
+  if (route[wrappedRouteSymbol]) throw new Error('Can not partially apply a partially applied route')
+  const wrapped = Object.assign(
     reverseRouting,
     mapValues(route, x => partiallyApplyReverseRoutes(x, availableParams)),
-    { [wrappedRouteSymbol]: route, [routeSymbol]: route[routeSymbol] }
+    {
+      [wrappedRouteSymbol]: route,
+      [routeSymbol]: route[routeSymbol],
+      path: route.path,
+      data: route.data,
+      toString: route.toString,
+    }
   )
+  Object.defineProperty(wrapped, 'toString',{
+    value: function toString() { return route.toString() },
+    enumerable: false
+  })
+
+  return wrapped
 
   function reverseRouting(params) {
     return route({ ...availableParams, ...params })

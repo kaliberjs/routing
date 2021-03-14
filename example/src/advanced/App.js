@@ -1,11 +1,14 @@
-import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, routeSymbol, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '../../../'
+import { RouteDataProvider, useAsyncRouteData } from './machinery/routeData'
 import { routeMap } from './routeMap'
 
-export default function App({ initialLocation, basePath }) {
+export default function App({ initialLocation, basePath, initialRouteData }) {
   return (
-    <LocationProvider {...{ initialLocation, basePath, routeMap }}>
-      <Page />
-    </LocationProvider>
+    <RouteDataProvider initialData={initialRouteData}>
+      <LocationProvider {...{ initialLocation, basePath, routeMap }}>
+        <Page />
+      </LocationProvider>
+    </RouteDataProvider>
   )
 }
 
@@ -13,6 +16,7 @@ function Page() {
   const { route, routes } = useRouting()
   const { language } = useRoutes()
   const { home, articles, notFound } = language
+
   return route(
     language,
     ({ language }) => (
@@ -73,9 +77,9 @@ function Navigation() {
   const language = useLanguage()
   return (
     <div>
-      <Link to={home()}>Home</Link>
-      <Link to={articles()}>{articles[routeSymbol].data.title[language]}</Link>
-      <Link to={articles.article({ articleId: 'article1' })}>Featured article</Link>
+      <Link to={home()}>{home.data.title}</Link>
+      <Link to={articles()}>{articles.data.title[language]}</Link>
+      <Link to={articles.article({ articleId: 'article1' })}>{{ en: 'Featured article', nl: 'Uitgelicht artikel' }[language]}</Link>
     </div>
   )
 }
@@ -83,24 +87,30 @@ function Navigation() {
 function Home() {
   const { articles } = useRoutes()
   const language = useLanguage()
+  const { title } = useRoute().data
+
   return (
     <div>
-      Home
-      <Link to={articles()}>{articles[routeSymbol].data.title[language]}</Link>
+      {title}
+      <Link to={articles()}>{articles.data.title[language]}</Link>
     </div>
   )
 }
 
 function Articles() {
-  const { article } = useRoutes()
-  const articles = useRoute()
+  const { article, list } = useRoutes()
   const language = useLanguage()
+  const { title } = useRoute().data
+  const { articles } = useAsyncRouteData({ articles: [] }, { route: list })
   return (
     <div>
-      {articles[routeSymbol].data.title[language]}
+      {title[language]}
       <div>
-        <Link to={article({ articleId: 'article1' })}>article 1</Link><br />
-        <Link to={article({ articleId: 'article2' })}>article 2</Link>
+        {articles.map(x =>
+          <div key={x.id}>
+            <Link to={article({ articleId: x.id })}>{x.title}</Link>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -110,12 +120,13 @@ function Article({ params: { articleId } }) {
   const { routes, route } = useRouting()
   const { main, tab1, tab2, notFound } = useRoutes()
   const pick = usePick()
+  const { article } = useAsyncRouteData({ article: {} })
 
   const atValidTab = Boolean(pick(main, tab1, tab2))
 
   return (
     <div>
-      <h1>Article {articleId}</h1>
+      <h1>{article.title} ({article.id})</h1>
       {atValidTab && (
         <div>
           <Link to={main()}>Main</Link>
@@ -131,9 +142,14 @@ function Article({ params: { articleId } }) {
           [notFound, 'Not found']
         )}
       </div>
-      {route(tab1, <div>Side bar for tab 1</div>)}
+      {route(tab1, <Sidebar {...{ article }} />)}
     </div>
   )
+}
+
+function Sidebar({ article }) {
+  const { price } = useAsyncRouteData({ price: 0 }, { extraArgs: { article } })
+  return <div>Side bar for tab 1, price: {price}</div>
 }
 
 function NotFound({ params: { '*': path } }) {
