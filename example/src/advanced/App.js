@@ -1,4 +1,4 @@
-import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '../../../'
+import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
 import { RouteDataProvider, useAsyncRouteData } from './machinery/routeData'
 import { routeMap } from './routeMap'
 

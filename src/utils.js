@@ -3,7 +3,7 @@ export function callOrReturn(x, ...args) {
 }
 
 /**
- * @template {{}} A
+ * @template {object} A
  * @template {(v: A[keyof A], k: keyof A, x: A) => B} B
  *
  * @param {A} x
@@ -13,8 +13,7 @@ export function callOrReturn(x, ...args) {
  */
 export function mapValues(x, f) {
   return Object.entries(x)
-    .map(([k, v]) => [k, f(v, k, x)])
-    .reduce((result, [k, v]) => ({ ...result, [k]: v }), {})
+    .reduce((result, [k, v]) => (result[k] = f(v, k, x), result), {})
 }
 
 export function throwError(e) { throw new Error(e) }

@@ -5,11 +5,12 @@ import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
 /**
+  @typedef {{ pathname: string, search: string, hash: string, state?: object }} Location
   @type {
     React.Context<
       {
-        location: { pathname: string, search: string, hash: string, state?: object },
-        match: null | { params: object, route: object },
+        location: Location,
+        match: null | { params: object, route: Route },
       } |
       undefined
     >
@@ -18,7 +19,7 @@ import { pickRoute, routeSymbol } from './routeMap'
 const locationContext = React.createContext(undefined)
 /** @type {React.Context<((to: number | string, x?: { state: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
-/** @type {React.Context<{ basePath: string, routeMap: object } | undefined>} */
+/** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
 const rootContext = React.createContext(undefined)
 /** @type {React.Context<Route | null>} */
 const routeContext = React.createContext(null)
@@ -32,9 +33,10 @@ const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
   @template {JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
   @returns {{
-  routes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
-  route<T>(...route: RoutePair<T>): JSX.Element,
-}} */
+    routes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
+    route<T>(...route: RoutePair<T>): JSX.Element,
+  }}
+*/
 export function useRouting() {
   const pick = usePick()
 
@@ -218,6 +220,7 @@ function ServerLocationProvider({ initialLocation: location, children }) {
   />
 }
 
+/** @param {{ location: Location, children: any }} location */
 function LocationAndMatchContext({ location, children }) {
   const { routeMap, basePath } = useRootContext()
   const value = React.useMemo(

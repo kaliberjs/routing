@@ -13,11 +13,12 @@ export function pick<
   ...overrides: B
 ): ReturnTypeOf<A> | ReturnTypesOf<B>
 
-export function pickRoute(pathname: string, routeMap: RouteMap): Route | null
+export function pickRoute(pathname: string, routeMap: RouteMap): { params: object, route: Route } | null
 
 export function asRouteChain(route: Route): Array<Route>
 
 export const routeSymbol: unique symbol
+export const routeMapSymbol: unique symbol
 
 type HandlerOf<A> =
   A extends (...args: any) => infer B ? ((params?: object, route?: Route) => B) :
@@ -35,7 +36,7 @@ type RouteInput = string | (RouteInputChildren & RouteInputObject) | RouteInputO
 type RouteInputObject = { path: Path, data?: any }
 type RouteInputChildren = { [K in Exclude<keyof RouteInputObject, string>]: RouteInput }
 
-type AsRouteMap<A> = { [K in keyof A]: AsRoute<A[K], {}> }
+type AsRouteMap<A> = { [K in keyof A]: AsRoute<A[K], {}> } & { [routeMapSymbol]: true }
 type AsRoute<A, Params> = ((params?: Params & AsParams<A>) => string) & (
   A extends string ? AsRouteProps<{ path: A, data: undefined }> :
   A extends (RouteInputChildren & RouteInputObject) ? AsRouteChildren<Omit<A, keyof RouteInputObject>, Params & AsParams<A>> & AsRouteProps<A> :
@@ -49,20 +50,16 @@ type AsRouteProps<A extends RouteInputObject> = {
   [routeSymbol]: { parent: Route },
   toString(): string,
 }
-type AsParams<A> =
-  A extends string ? StringAsParams<A> :
-  A extends RouteInputObject ? StringAsParams<A['path']> :
+type AsParams<A> = LanguageSupport & (
+  A extends string ? { [K in StringAsParams<A>]: string } :
+  A extends RouteInputObject ? { [K in StringAsParams<A['path']>]: string } :
   never
-type StringAsParams<A> = A extends `:${infer B}`? { [K in B]: string } : {}
-
-type RouteMap = { [route: string]: Route }
-type Route = ReverseRoute & ((RouteChildren & RouteProps) | RouteProps)
-type ReverseRoute = (params?: object) => string
-type RouteChildren = { [child: string]: Route }
-type RouteProps = {
-  data?: any,
-  path: Path,
-  [routeSymbol]: { parent: Route },
-  toString(): string,
-}
-type Path = string | { [language: string]: string }
+)
+type StringAsParams<A> =
+  A extends { [language: string]: infer B } ? StringAsParams<B> :
+  A extends `:${infer B}/${infer C}` ? B | StringAsParams<C> :
+  A extends `:${infer B}` ? B :
+  A extends `${infer B}/${infer C}` ? StringAsParams<C> :
+  A extends `*` ? '*' :
+  never
+type LanguageSupport = { language?: string }

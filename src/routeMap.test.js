@@ -1,6 +1,6 @@
 import { asRouteChain, asRouteMap, pick, routeMapSymbol, routeSymbol } from './routeMap'
 
-const { anything, objectContaining } = expect
+const { objectContaining } = expect
 
 describe('asRouteMap', () => {
 
@@ -115,8 +115,8 @@ describe('asRouteMap', () => {
         expect(x()).toBe('/y')
       })
       test('path dynamic', () => {
-        const { x } = asRouteMap({ x: { path: 'a/:y/b' } })
-        expect(x({ y: 'z' })).toBe('/a/z/b')
+        const map = asRouteMap({ x: { path: 'a/:y/b' } })
+        expect(map.x({ y: 'z' })).toBe('/a/z/b')
       })
       test('localized path static', () => {
         const path = { en: 'a', nl: 'b' }
@@ -125,8 +125,9 @@ describe('asRouteMap', () => {
         expect(x({ language: 'nl' })).toEqual('/b')
       })
       test('localized path dynamic', () => {
-        const path = { en: 'x/:a/y', nl: 'a/:b/b' }
-        const { x } = asRouteMap({ x: { path } })
+        const map = asRouteMap({ x: { path: { en: 'x/:a/y', nl: 'a/:b/b' }
+       } })
+        const { x } = map
         expect(x({ language: 'en', a: 'c', b: 'd' })).toEqual('/x/c/y')
         expect(x({ language: 'nl', a: 'c', b: 'd' })).toEqual('/a/d/b')
       })
@@ -162,14 +163,13 @@ describe('asRouteMap', () => {
         expect(x.child.nested()).toBe('/a/b/c')
       })
       test('localized leaf', () => {
-        const map = {
+        const { x } = asRouteMap({ x: {
           path: 'a',
           child: {
             path: 'b',
             nested: { path: { en: 'c', nl: 'd' } },
           }
-        }
-        const { x } = asRouteMap({ x: map })
+        }})
         expect(x()).toBe('/a')
         expect(x.child()).toBe('/a/b')
         expect(x.child.nested({ language: 'en' })).toBe('/a/b/c')
@@ -193,14 +193,13 @@ describe('asRouteMap', () => {
         expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('localized root', () => {
-        const map = {
+        const { x } = asRouteMap({ x: {
           path: { en: 'a', nl: 'b' },
           child: {
             path: 'c',
             nested: 'd',
           }
-        }
-        const { x } = asRouteMap({ x: map })
+        } })
         expect(x({ language: 'en' })).toBe('/a')
         expect(x.child({ language: 'en' })).toBe('/a/c')
         expect(x.child.nested({ language: 'en' })).toBe('/a/c/d')
@@ -210,14 +209,14 @@ describe('asRouteMap', () => {
         expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('combined dynamic reverse routing', () => {
-        const map = {
+        const map = asRouteMap({ x: {
           path: ':a/b',
           child: {
             path: { en: ':c/e', nl: ':d/f' },
             nested: ':g/h',
           }
-        }
-        const { x } = asRouteMap({ x: map })
+        }})
+        const { x } = map
         expect(x({ a: 'i' })).toBe('/i/b')
         expect(x.child({ language: 'en', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/j/e')
         expect(x.child.nested({ language: 'en', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/j/e/l/h')
@@ -241,6 +240,7 @@ describe('asRouteMap', () => {
 
 describe('pick', () => {
   test('throw error for non-RouteMap', () => {
+    // @ts-ignore
     expect(() => pick('', [{}])).toThrowError(/asRouteMap/)
   })
   test('route not found', () => {
@@ -415,6 +415,7 @@ describe('pick', () => {
         },
         notFound: '*',
       })
+      /** @type {[RouteMap, typeof asTuple]} */
       const x = [map, asTuple]
       function empty(route) { return [{}, route]}
       function article(id, route) { return [{ articleId: id }, route] }
@@ -459,7 +460,7 @@ describe('interpolate', () => {
     expect(d()).toBe('/abc/def/ghi')
   })
   test('interpolation', () => {
-    const { a, b, c, d, e, f, g, h, i, j, k } = asRouteMap({
+    const { a, b, c, d, e, f, g, h, i, j, k, l } = asRouteMap({
       a: ':a',
       b: '*',
       c: ':a/b',
@@ -469,9 +470,10 @@ describe('interpolate', () => {
       g: ':a/*',
       h: 'a/:a/b',
       i: 'a/:a/b/*',
+      j: 'a/:a/b/:b',
       // don't use these in real routes:
-      j: 'a/abc:def/b',
-      k: 'a/abc:def/b/*',
+      k: 'a/abc:def/b',
+      l: 'a/abc:def/b/*',
     })
 
     expect(a({ a: 'b' })).toBe('/b')
@@ -483,8 +485,11 @@ describe('interpolate', () => {
     expect(g({ a: 'b', '*': 'c' })).toBe('/b/c')
     expect(h({ a: 'b' })).toBe('/a/b/b')
     expect(i({ a: 'b', '*': 'c' })).toBe('/a/b/b/c')
-    expect(j({ def: 'ghi' })).toBe('/a/abcghi/b')
-    expect(k({ def: 'ghi', '*': 'j' })).toBe('/a/abcghi/b/j')
+    expect(j({ a: 'b', 'b': 'c' })).toBe('/a/b/b/c')
+    // @ts-ignore
+    expect(k({ def: 'ghi' })).toBe('/a/abcghi/b')
+    // @ts-ignore
+    expect(l({ def: 'ghi', '*': 'j' })).toBe('/a/abcghi/b/j')
   })
 })
 
