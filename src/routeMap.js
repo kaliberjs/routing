@@ -10,151 +10,193 @@
   - Allow segmentation (sub-objects available to sub-components)
   - Should be compatible with component thinking
 */
-import { pick, interpolate, callOrReturn } from './matching'
+import { callOrReturn, mapValues, throwError } from './utils'
 
 export const routeSymbol = Symbol('routeSymbol')
+export const routeMapSymbol = Symbol('routeMapSymbol')
 
-export function asRouteMap(map) { return addParentPaths(normalize(map)) }
-
-export function pickFromRouteMap(pathname, [routeMap, defaultHandler], ...overrides) {
-  if (!routeMap[_]) throw new Error('Please wrap normalize your routeMap using the `asRouteMap` function')
-  const routes = routeToRoutes(routeMap, defaultHandler, overrides)
-  return pick(pathname, ...Object.entries(routes))
-
-  function routeToRoutes(route, defaultHandler, overrides, base = '') {
-    const { children, route: { path } } = splitChildren(route)
-    if (path) {
-      const [override, handler] = overrides.find(([x]) => x === route) || []
-      const absolutePath = makePathAbsolute(path, base)
-      return {
-        [absolutePath]: params => callOrReturn(
-          override ? handler : defaultHandler,
-          { ...params, route }
-        ),
-        ...routeChildrenToRoutes(children, absolutePath),
-      }
-    }  else return routeChildrenToRoutes(children, base)
-
-    function routeChildrenToRoutes(children, base) {
-      return Object.values(children).reduce(
-        (result, child) => ({ ...result, ...routeToRoutes(child, defaultHandler, overrides, base) }),
-        {}
-      )
-    }
-  }
-}
-
-export function extractPathFromRoute(route) {
-  if (!route.hasOwnProperty(_)) throw new Error(`It seems the route '${JSON.stringify(route)}' is not from the route map`)
-  const { children, route: { [routeSymbol]: { parentPaths }, path } } = splitChildren(route)
-  const abs = [...parentPaths, path].reduce(
-    (base, path) => makePathAbsolute(path, base),
-    ''
-  )
-  return `${abs}${Object.keys(children).length ? '/*' : ''}`
-  /* TODO:
-   While tricky, I think it should result in something like this for paths with children:
-
-    (child1|child1/subchild1|child1/subchild2|child2/special)
-
-    This would allow us to detect non-existing urls at any level of the tree. And would prevent
-    something like /x/:y/* to match non existing routes after the *.
-
-    Not sure if it is worth the added complexity though. So I think you should first finish with
-    the current feature set.
-   */
-}
-
-export function determineNestedContextForRoute(context, route) {
-  const { children } = splitChildren(route)
+export function asRouteMap(map, language = undefined) {
   return {
-    root: context.root,
-    path: addParentPathsToChildren(children),
+    ...normalizeChildren(map, language),
+    [routeMapSymbol]: true,
   }
 }
 
-function normalize({ path, meta, data, ...children }) {
-  return withReverseRouting({ [routeSymbol]: {}, path, meta, data, ...normalizeChildren(children) })
+export function pick(pathname, [routeMap, defaultHandler], ...overrides) {
+  const result = pickRoute(pathname, routeMap)
+  if (!result) return null
 
-  function normalizeChildren(children) {
-    return mapValues(children, child =>
-      normalize(typeof child === 'string' ? { path: child } : child)
-    )
+  const { route, params } = result
+  const [override, handler] = overrides.find(([x]) => x === route) || []
+  return callOrReturn(override ? handler : defaultHandler, params, route)
+}
+
+export function pickRoute(pathname, routeMap) {
+  if (!routeMap.hasOwnProperty(routeMapSymbol))
+  throw new Error('Please normalize your routeMap using the `asRouteMap` function')
+
+  const pathSegments = pathname.split('/').filter(Boolean)
+  const children = Object.values(routeMap)
+  const result = pickFromChildren(pathSegments, children)
+  return result ? result : null
+}
+
+export function asRouteChain(route) {
+  if (!route) return []
+  return asRouteChain(route[routeSymbol].parent).concat(route)
+}
+
+function interpolate(routePath, params) {
+  return routePath
+    .replace(/:([^/]+)/g, (_, paramName) => {
+      const newValue = params[paramName]
+      if (!newValue) throw new Error(`Could not find value for '${paramName}'`)
+      return newValue
+    })
+    .replace(/(\*)/, () => params['*'] || '')
+}
+
+function pickFromChildren(pathSegments, children, previousParams = {}) {
+  const preparedChildren = children
+    .map(route => {
+      const path = normalizePath(route.path, previousParams.language)
+      if (path === null) return null
+
+      return { route, routeSegments: path.split('/') }
+    })
+    .filter(Boolean)
+    .sort((a, b) => score(b.routeSegments) - score(a.routeSegments))
+
+  for (const { route, routeSegments } of preparedChildren) {
+    const nonEmptyRouteSegments = routeSegments.filter(Boolean)
+
+    const info = matchRouteSegments(nonEmptyRouteSegments, pathSegments)
+    if (!info) continue
+
+    const { params, remainingSegments } = info
+    const children = Object.values(route)
+    const hasChildren = Boolean(children.length)
+    const hasRemainingSegments = Boolean(remainingSegments.length)
+
+    const potentialMatch = hasChildren || !hasRemainingSegments
+    if (!potentialMatch) continue
+
+    const resultFromChildren = pickFromChildren(remainingSegments, children, { ...previousParams, ...params }) // TODO add a test for adding 'previousParams' here
+    if (resultFromChildren) return resultFromChildren
+
+    if (!hasRemainingSegments) return { params: { ...previousParams, ...params }, route }
   }
 }
 
-function withReverseRouting(route) {
-  const { [routeSymbol]: { parentPaths = [] }, path } = route
-  return Object.assign(reverseRoute, route)
+function matchRouteSegments(routeSegments, pathSegments) {
+  return routeSegments.reduce(
+    (result, routeSegment) => {
+      if (!result) return
 
-  function reverseRoute(params) {
-    return [...parentPaths, path].reduce(
-      (base, path) => {
-        return (
-          base && typeof base === 'object' ? resolveBaseObject(path, base, params) :
-          path && typeof path === 'object' ? resolvePathObject(path, base, params) :
-          resolve(path, base, params)
-        )
-      },
-      ''
-    )
+      const { params: previousParams, remainingSegments: segments } = result
+      const match = matchRouteSegment(routeSegment, segments)
+      if (!match) return
 
-    function resolveBaseObject(path, base, params) {
-      return mapValues(base, (base, k) => resolve(path[k] || path, base, params))
-    }
-
-    function resolvePathObject(path, base, params) {
-      return mapValues(path, path => resolve(path, base, params))
-    }
-
-    function resolve(path, base, params) {
-      const pathValue = interpolate(path, params)
-      return base ? `${base}/${pathValue}` : pathValue
-    }
-  }
-}
-
-function makePathAbsolute(path, base) {
-  return (
-    base && path ? `${base}/${pathAsString(path)}` :
-    base ? base :
-    path ? pathAsString(path) :
-    path
+      const { params, remainingSegments } = match
+      return { params: { ...previousParams, ...params }, remainingSegments }
+    },
+    { params: {}, remainingSegments: pathSegments }
   )
+}
 
-  function pathAsString(path) {
-    return (
-      typeof path === 'string' ? path :
-      path ? `(?:${Object.values(path).join('|')})` :
-      path
-    )
+function matchRouteSegment(routeSegment, remainingSegments) {
+  const [segment, ...newRemainingSegments] = remainingSegments
+
+  const paramMatch = routeSegment.startsWith(':') && segment
+  const wildcardMatch = routeSegment === '*' && segment
+  const staticMatch = segment === routeSegment
+
+  return (wildcardMatch || paramMatch || staticMatch) && {
+    params:
+      paramMatch ? { [routeSegment.slice(1)]: segment } :
+      wildcardMatch ? { '*': remainingSegments.join('/') } :
+      staticMatch ? {} :
+      throwError('Unexpected condition')
+    ,
+    remainingSegments: wildcardMatch ? [] : newRemainingSegments,
   }
 }
 
-// TODO: provide the ability to get all parent routes, this is needed to be able to fetch all data
-// from the parents in the tree.
-//
-// The TODO is done, but it needs to be exposed
-function addParentPaths(route, parentPaths = []) {
-  const { children, route: { path, meta, data } } = splitChildren(route)
-  return withReverseRouting({
-    [routeSymbol]: { parentPaths },
-    path, meta, data,
-    ...addParentPathsToChildren(children, parentPaths.concat(path || []))
+function score(routeSegments) {
+  return routeSegments.reduce(
+    (previousScore, segment, i) => {
+      const score =
+        segment === '*' ? -2 :
+        segment.startsWith(':') ? 4 :
+        8
+
+      return previousScore + (score / (i + 1))
+    },
+    0
+  )
+}
+
+function normalizeChildren(children, language, getParent = () => null, parentName = '') {
+  return mapValues(children, (childOrPath, name) => {
+    const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
+    return normalize(route, language, getParent, parentName ? `${parentName}.${name}` : name)
   })
 }
 
-function addParentPathsToChildren(children, parentPaths = []) {
-  return mapValues(children, child => addParentPaths(child, parentPaths))
+function normalize(routeInput, language, getParent, name) {
+  const { path, data = undefined, ...children } = routeInput
+  if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)
+
+  const normalizedChildren = normalizeChildren(children, language, () => route, name)
+  const route = createRoute(name, path, data, normalizedChildren, getParent)
+  return route
 }
 
-function mapValues(x, f) {
-  return Object.entries(x)
-    .map(([k, v]) => [k, f(v, k, x)])
-    .reduce((result, [k, v]) => ({ ...result, [k]: v }), {})
+function createRoute(name, path, data, children, getParent) {
+  const route = Object.assign(reverseRoute, {
+    ...children,
+    [routeSymbol]: {
+      get parent() { return getParent() },
+    },
+  })
+  Object.defineProperties(route, {
+    toString: {
+      value: function toString() { return name },
+      enumerable: false
+    },
+    path: { value: path, enumerable: false },
+    data: { value: data, enumerable: false },
+  })
+  return route
+
+  function reverseRoute(params = {}) {
+    const parentPaths = getParents(route).map(x => x.path)
+
+    return [...parentPaths, route.path].reduce(
+      (base, path) => {
+        const { language } = params
+        const normalizedPath = normalizePath(path, language)
+        if (normalizedPath === null) throwError(`Could not determine path from ${JSON.stringify(path)} with language ${language}`)
+        return resolve(normalizedPath, base, params)
+      },
+      ''
+    )
+  }
 }
 
-function splitChildren(route) {
-  const { [routeSymbol]: internal, path, meta, data, ...children } = route
-  return { route, children }
+function normalizePath(path, language) {
+  return (
+    typeof path === 'string' ? path :
+    language in path ? path[language] :
+    null
+  )
+}
+
+function resolve(path, base, params) {
+  const pathValue = interpolate(path, params)
+  return `${base}/${pathValue}`
+}
+
+function getParents({ [routeSymbol]: { parent } }) {
+  return !parent ? [] : getParents(parent).concat(parent)
 }

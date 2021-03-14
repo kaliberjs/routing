@@ -1,43 +1,59 @@
 import { asRouteMap } from '@kaliber/routing'
-
 export const routeMap = asRouteMap({
-  home: { path: '', meta: { title: 'Home' } },
-  articles: {
-    path: { nl: 'artikelen', en: 'articles' },
-    meta: { title: { nl: 'Artikelen', en: 'Articles' } },
+  root: '',
+  test: { path: '' },
+  language: {
+    path: ':language',
 
-    list: { path: '', data: fetchArticles },
-    article: {
-      path: ':articleId',
-      data: fetchArticle,
-      meta: { title: x => x.article.title },
+    home: { path: '', data: { title: 'Home' } },
+    articles: {
+      path: { nl: 'artikelen', en: 'articles' },
+      data: { title: { nl: 'Artikelen', en: 'Articles' } },
 
-      main: '',
-      tab1: {
-        path: 'tab1',
-        data: fetchArticleMetadata,
-        meta: { title: x => `${x.article.title} - €${x.tab1.price}` }
+      list: {
+        path: '',
+        data: async () => ({ articles: await fetchArticles() })
       },
-      tab2: 'tab2',
-      notFound: '*',
-    },
-  },
-  notFound: '*',
-})
+      article: {
+        path: ':articleId',
+        data: async ({ articleId }) => ({ article: await fetchArticle({ articleId }) }),
 
-async function fetchArticle({ params: { articleId } }) {
+        main: '',
+        tab1: {
+          path: 'tab1',
+          data: async ({ article }) => {
+            const { price } = await fetchArticleMetadata({ article })
+            return { price, title: `${article.title} - €${price}` }
+          },
+        },
+        tab2: 'tab2',
+        notFound: '*',
+      },
+    },
+    notFound: '*',
+  }
+})
+async function fetchArticle({ articleId }) {
+  await second(1)
+
   return {
-    title: `Artikel ${articleId}`
+    title: `Artikel ${articleId}`,
+    id: 'article1',
   }
 }
 
 async function fetchArticles() {
+  await second(1)
+
   return [
     { title: `Artikel article1`, id: 'article1' },
     { title: `Artikel article2`, id: 'article2' },
   ]
 }
 
-async function fetchArticleMetadata({ data: { article } }) {
+async function fetchArticleMetadata({ article }) {
+  await second(1)
   return { price: 10 }
 }
+
+async function second(x) { return new Promise(resolve => setTimeout(resolve, x * 1000)) }
