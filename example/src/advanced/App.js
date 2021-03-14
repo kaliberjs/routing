@@ -17,20 +17,17 @@ function Page() {
   const { language } = useRoutes()
   const { home, articles, notFound } = language
 
-  return route(
-    language,
-    ({ language }) => (
-      <Language {...{ language }}>
-        <Navigation />
-        {routes(
-          [home, <Home />], // eslint-disable-line react/jsx-key
-          [articles, <Articles />], // eslint-disable-line react/jsx-key
-          [articles.article, params => <Article {...{ params }} />],
-          [notFound, params => <NotFound {...{ params }} />],
-        )}
-      </Language>
-    )
-  )
+  return route(language, ({ language }) => (
+    <Language {...{ language }}>
+      <Navigation />
+      {routes(
+        [home, <Home />], // eslint-disable-line react/jsx-key
+        [articles, <Articles />], // eslint-disable-line react/jsx-key
+        [articles.article, params => <Article {...{ params }} />],
+        [notFound, params => <NotFound {...{ params }} />],
+      )}
+    </Language>
+  ))
 }
 
 const languageContext = React.createContext(null)
