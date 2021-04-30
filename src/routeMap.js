@@ -16,9 +16,10 @@ export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
 export function asRouteMap(map, language = undefined) {
+  const children = normalizeChildren(map, language)
   return {
-    ...normalizeChildren(map, language),
-    [routeMapSymbol]: true,
+    ...children,
+    [routeMapSymbol]: { children }
   }
 }
 
@@ -36,7 +37,7 @@ export function pickRoute(pathname, routeMap) {
   throw new Error('Please normalize your routeMap using the `asRouteMap` function')
 
   const pathSegments = pathname.split('/').filter(Boolean)
-  const children = Object.values(routeMap)
+  const children = Object.values(routeMap[routeMapSymbol].children)
   const result = pickFromChildren(pathSegments, children)
   return result ? result : null
 }
@@ -74,7 +75,7 @@ function pickFromChildren(pathSegments, children, previousParams = {}) {
     if (!info) continue
 
     const { params, remainingSegments } = info
-    const children = Object.values(route)
+    const children = Object.values(route[routeSymbol].children)
     const hasChildren = Boolean(children.length)
     const hasRemainingSegments = Boolean(remainingSegments.length)
 
@@ -153,21 +154,20 @@ function normalize(routeInput, language, getParent, name) {
 }
 
 function createRoute(name, path, data, children, getParent) {
-  const route = Object.assign(reverseRoute, {
+  return withReverseRoute({
     ...children,
+    toString() { return name },
+    path,
+    data,
     [routeSymbol]: {
       get parent() { return getParent() },
+      children,
     },
   })
-  Object.defineProperties(route, {
-    toString: {
-      value: function toString() { return name },
-      enumerable: false
-    },
-    path: { value: path, enumerable: false },
-    data: { value: data, enumerable: false },
-  })
-  return route
+}
+
+function withReverseRoute(route) {
+  return Object.assign(reverseRoute, route)
 
   function reverseRoute(params = {}) {
     const parentPaths = getParents(route).map(x => x.path)

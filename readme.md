@@ -62,25 +62,25 @@ export function UniversalApp({ initialLocation }) {
 }
 
 function Page() {
-  const { routes } = useRouting()
-  const { home, articles, notFound } = useRoutes()
+  const { matchRoutes } = useRouting()
+  const routes = useRoutes()
 
-  return routes(
-    [home, <Home />],
-    [articles, <Articles />],
-    [articles.article, params => <Article {...{ params }} />],
-    [notFound, <NotFound />]
+  return matchRoutes(
+    [routes.home, <Home />],
+    [routes.articles, <Articles />],
+    [routes.articles.article, params => <Article {...{ params }} />],
+    [routes.notFound, <NotFound />]
   )
 }
 
 function Articles() {
-  const { article } = useRoutes()
+  const routes = useRoutes()
   return (
     <div>
       <h1>Articles</h1>
       <ul>
-        <li><Link to={article({ articleId: 'article1' })}>Article 1</Link></li>
-        <li><Link to={article({ articleId: 'article2' })}>Article 2</Link></li>
+        <li><Link to={routes.article({ articleId: 'article1' })}>Article 1</Link></li>
+        <li><Link to={routes.article({ articleId: 'article2' })}>Article 2</Link></li>
       </ul>
     </div>
   )
@@ -190,7 +190,7 @@ There are a few methods used for matching routes, some are used on the client, o
 - Client
   - `useMatch`
   - `usePick` (with `pick`)
-  - `useRouting` (with `route` and `routes`)
+  - `useRouting` (with `matchRoute` and `matchRoutes`)
 
 ---
 ### `pickRoute`
@@ -242,8 +242,8 @@ Returns a function that lets you choose a route from an array of routes, or `nul
 
 ```js
 function useRouting(): {
-  route: (route: Route, handler: A | (params) => A) => A,
-  routes: (...routes: Array<[route: Route, handler: A | (params) => A]>) => A,
+  matchRoute: (route: Route, handler: A | (params) => A) => A,
+  matchRoutes: (...routes: Array<[route: Route, handler: A | (params) => A]>) => A,
 }
 ```
 Mainly used inside the render tree. Allows you to render based on a matched route.
@@ -333,7 +333,7 @@ Returns an array of all routes from the root of the route map up to (and includi
 function useRoute(): Route | null
 ```
 
-Returns the currently active route as determined by calls to `route` and `routes` of `useRouting`.
+Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
 
 ---
 ### `useLocation`

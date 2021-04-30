@@ -36,7 +36,9 @@ type RouteInput = string | (RouteInputChildren & RouteInputObject) | RouteInputO
 type RouteInputObject = { path: Path, data?: any }
 type RouteInputChildren = { [K in Exclude<keyof RouteInputObject, string>]: RouteInput }
 
-type AsRouteMap<A> = { [K in keyof A]: AsRoute<A[K], {}> } & { [routeMapSymbol]: true }
+type AsRouteMap<A> =
+  { [K in keyof A]: AsRoute<A[K], {}> } &
+  { [routeMapSymbol]: { children: { [K in keyof A]: AsRoute<A[K], {}> } } }
 type AsRoute<A, Params> = ((params?: Params & AsParams<A>) => string) & (
   A extends string ? AsRouteProps<{ path: A, data: undefined }> :
   A extends (RouteInputChildren & RouteInputObject) ? AsRouteChildren<Omit<A, keyof RouteInputObject>, Params & AsParams<A>> & AsRouteProps<A> :

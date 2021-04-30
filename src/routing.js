@@ -33,17 +33,17 @@ const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
   @template {JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
   @returns {{
-    routes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
-    route<T>(...route: RoutePair<T>): JSX.Element,
+    matchRoutes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
+    matchRoute<T>(...route: RoutePair<T>): JSX.Element,
   }}
 */
 export function useRouting() {
   const pick = usePick()
 
-  return { route, routes }
+  return { matchRoute, matchRoutes }
 
-  function route(...route) { return routes(route) }
-  function routes(...routes) {
+  function matchRoute(...route) { return matchRoutes(route) }
+  function matchRoutes(...routes) {
     const routeLookup = new Map(routes)
 
     const result = pick(...routeLookup.keys())
@@ -87,7 +87,7 @@ export function useRoutes() {
   const currentRoute = useRoute()
   const match = useMatch()
 
-  const hasChildren = Object.values(currentRoute || {}).length
+  const hasChildren = currentRoute && Object.keys(currentRoute[routeSymbol].children).length
   const parent = currentRoute && currentRoute[routeSymbol].parent
 
   return (
@@ -255,28 +255,17 @@ function resolve(basePath, to) {
    /en/articles/article1. Should the route to lang.articles.article()
    have prefilled { lang: 'en' } or { lang: 'en', aricleId: 'article1' }?
 */
-
 function partiallyApplyReverseRoutes(route, availableParams) {
   if (route[wrappedRouteSymbol]) throw new Error('Can not partially apply a partially applied route')
-  const wrapped = Object.assign(
-    reverseRouting,
-    mapValues(route, x => partiallyApplyReverseRoutes(x, availableParams)),
-    {
-      [wrappedRouteSymbol]: route,
-      [routeSymbol]: route[routeSymbol],
-      path: route.path,
-      data: route.data,
-      toString: route.toString,
-    }
+
+  return Object.assign(
+    partiallyAppliedReverseRoute,
+    route,
+    mapValues(route[routeSymbol].children, x => partiallyApplyReverseRoutes(x, availableParams)),
+    { [wrappedRouteSymbol]: route }
   )
-  Object.defineProperty(wrapped, 'toString',{
-    value: function toString() { return route.toString() },
-    enumerable: false
-  })
 
-  return wrapped
-
-  function reverseRouting(params) {
+  function partiallyAppliedReverseRoute(params) {
     return route({ ...availableParams, ...params })
   }
 }

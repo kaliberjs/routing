@@ -10,76 +10,76 @@ export default function App({ initialLocation }) {
 }
 
 function Page() {
-  const { routes } = useRouting()
-  const { home, articles, notFound } = useRoutes()
+  const { matchRoutes } = useRouting()
+  const routes = useRoutes()
 
   return (
     <>
       <Navigation />
-      {routes(
-        [home, <Home />], // eslint-disable-line react/jsx-key
-        [articles, <Articles />], // eslint-disable-line react/jsx-key
-        [articles.article, params => <Article {...{ params }} />],
-        [notFound, params => <NotFound {...{ params }} />],
+      {matchRoutes(
+        [routes.home, <Home />], // eslint-disable-line react/jsx-key
+        [routes.articles, <Articles />], // eslint-disable-line react/jsx-key
+        [routes.articles.article, params => <Article {...{ params }} />],
+        [routes.notFound, params => <NotFound {...{ params }} />],
       )}
     </>
   )
 }
 
 function Navigation() {
-  const { home, articles } = useRoutes()
+  const routes = useRoutes()
   return (
     <div>
-      <Link to={home()}>Home</Link>
-      <Link to={articles()}>Articles</Link>
-      <Link to={articles.article({ id: 'article1' })}>Featured article</Link>
+      <Link to={routes.home()}>Home</Link>
+      <Link to={routes.articles()}>Articles</Link>
+      <Link to={routes.articles.article({ id: 'article1' })}>Featured article</Link>
     </div>
   )
 }
 
 function Home() {
-  const { articles } = useRoutes()
-
+  const routes = useRoutes()
   return (
     <div>
       Home
-      <Link to={articles()}>Articles</Link>
+      <Link to={routes.articles()}>Articles</Link>
     </div>
   )
 }
 
 function Articles() {
-  const { article } = useRoutes()
+  const routes = useRoutes()
   return (
     <div>
       articles
       <div>
-        <Link to={article({ id: 'article1' })}>article 1</Link><br />
-        <Link to={article({ id: 'article2' })}>article 2</Link>
+        <Link to={routes.article({ id: 'article1' })}>article 1</Link><br />
+        <Link to={routes.article({ id: 'article2' })}>article 2</Link>
       </div>
     </div>
   )
 }
 
 function Article({ params: { id } }) {
-  const { routes, route } = useRouting()
-  const { main, tab1, tab2 } = useRoutes()
+  const { matchRoutes, matchRoute } = useRouting()
+  const routes = useRoutes()
+  console.log(routes)
   return (
     <div>
       <h1>Article {id}</h1>
       <div>
-        <Link to={main()}>Main</Link>
-        <Link to={tab1()}>Tab1</Link>
-        <Link to={tab2()}>Tab2</Link>
+        <Link to={routes.main()}>Main</Link>
+        <Link to={routes.tab1()}>Tab1</Link>
+        <Link to={routes.tab2()}>Tab2</Link>
       </div>
       <div>
-        {routes(
-          [main, 'Main content'],
-          [tab1, 'Tab 1'],
-          [tab2, 'Tab 2'],
+        {matchRoutes(
+          [routes.main, 'Main content'],
+          [routes.tab1, 'Tab 1'],
+          [routes.tab2, 'Tab 2'],
         ) || 'not matched'}
       </div>
-      {route(tab1, <div>Side bar for tab 1</div>)}
+      {matchRoute(routes.tab1, <div>Side bar for tab 1</div>)}
     </div>
   )
 }

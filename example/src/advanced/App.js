@@ -13,18 +13,18 @@ export default function App({ initialLocation, basePath, initialRouteData }) {
 }
 
 function Page() {
-  const { route, routes } = useRouting()
-  const { language } = useRoutes()
-  const { home, articles, notFound } = language
+  const { matchRoute, matchRoutes } = useRouting()
+  const mainRoutes = useRoutes()
+  const subRoutes = mainRoutes.language
 
-  return route(language, ({ language }) => (
+  return matchRoute(mainRoutes.language, ({ language }) => (
     <Language {...{ language }}>
       <Navigation />
-      {routes(
-        [home, <Home />], // eslint-disable-line react/jsx-key
-        [articles, <Articles />], // eslint-disable-line react/jsx-key
-        [articles.article, params => <Article {...{ params }} />],
-        [notFound, params => <NotFound {...{ params }} />],
+      {matchRoutes(
+        [subRoutes.home, <Home />], // eslint-disable-line react/jsx-key
+        [subRoutes.articles, <Articles />], // eslint-disable-line react/jsx-key
+        [subRoutes.articles.article, params => <Article {...{ params }} />],
+        [subRoutes.notFound, params => <NotFound {...{ params }} />],
       )}
     </Language>
   ))
@@ -70,42 +70,42 @@ function useLanguage() {
 }
 
 function Navigation() {
-  const { home, articles } = useRoutes()
+  const routes = useRoutes()
   const language = useLanguage()
   return (
     <div>
-      <Link to={home()}>{home.data.title}</Link>
-      <Link to={articles()}>{articles.data.title[language]}</Link>
-      <Link to={articles.article({ articleId: 'article1' })}>{{ en: 'Featured article', nl: 'Uitgelicht artikel' }[language]}</Link>
+      <Link to={routes.home()}>{routes.home.data.title}</Link>
+      <Link to={routes.articles()}>{routes.articles.data.title[language]}</Link>
+      <Link to={routes.articles.article({ articleId: 'article1' })}>{{ en: 'Featured article', nl: 'Uitgelicht artikel' }[language]}</Link>
     </div>
   )
 }
 
 function Home() {
-  const { articles } = useRoutes()
+  const routes = useRoutes()
   const language = useLanguage()
   const { title } = useRoute().data
 
   return (
     <div>
       {title}
-      <Link to={articles()}>{articles.data.title[language]}</Link>
+      <Link to={routes.articles()}>{routes.articles.data.title[language]}</Link>
     </div>
   )
 }
 
 function Articles() {
-  const { article, list } = useRoutes()
+  const routes = useRoutes()
   const language = useLanguage()
   const { title } = useRoute().data
-  const { articles } = useAsyncRouteData({ articles: [] }, { route: list })
+  const { articles } = useAsyncRouteData({ articles: [] }, { route: routes.list })
   return (
     <div>
       {title[language]}
       <div>
         {articles.map(x =>
           <div key={x.id}>
-            <Link to={article({ articleId: x.id })}>{x.title}</Link>
+            <Link to={routes.article({ articleId: x.id })}>{x.title}</Link>
           </div>
         )}
       </div>
@@ -114,32 +114,32 @@ function Articles() {
 }
 
 function Article({ params: { articleId } }) {
-  const { routes, route } = useRouting()
-  const { main, tab1, tab2, notFound } = useRoutes()
+  const { matchRoutes, matchRoute } = useRouting()
+  const routes = useRoutes()
   const pick = usePick()
   const { article } = useAsyncRouteData({ article: {} })
 
-  const atValidTab = Boolean(pick(main, tab1, tab2))
+  const atValidTab = Boolean(pick(routes.main, routes.tab1, routes.tab2))
 
   return (
     <div>
       <h1>{article.title} ({article.id})</h1>
       {atValidTab && (
         <div>
-          <Link to={main()}>Main</Link>
-          <Link to={tab1()}>Tab1</Link>
-          <Link to={tab2()}>Tab2</Link>
+          <Link to={routes.main()}>Main</Link>
+          <Link to={routes.tab1()}>Tab1</Link>
+          <Link to={routes.tab2()}>Tab2</Link>
         </div>
       )}
       <div>
-        {routes(
-          [main, 'Main content'],
-          [tab1, 'Tab 1'],
-          [tab2, 'Tab 2'],
-          [notFound, 'Not found']
+        {matchRoutes(
+          [routes.main, 'Main content'],
+          [routes.tab1, 'Tab 1'],
+          [routes.tab2, 'Tab 2'],
+          [routes.notFound, 'Not found']
         )}
       </div>
-      {route(tab1, <Sidebar {...{ article }} />)}
+      {matchRoute(routes.tab1, <Sidebar {...{ article }} />)}
     </div>
   )
 }
