@@ -235,7 +235,7 @@ Similar to `pickRoute` it returns the matched `Route` with it's `params` when a 
 function usePick(): (...routes: Array<Route>) => Route
 ```
 
-Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. These selected route is found by traversing the parents of the currently matched route.
+Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the currently matched route.
 
 ---
 ### `useRouting`
