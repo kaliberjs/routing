@@ -1,4 +1,4 @@
-import { useNavigate, useRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useNavigate, useMatchedRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
 import { RouteDataProvider, useAsyncRouteData } from './machinery/routeData'
 import { routeMap } from './routeMap'
 
@@ -84,7 +84,7 @@ function Navigation() {
 function Home() {
   const routes = useRoutes()
   const language = useLanguage()
-  const { title } = useRoute().data
+  const { title } = useMatchedRoute().data
 
   return (
     <div>
@@ -97,7 +97,7 @@ function Home() {
 function Articles() {
   const routes = useRoutes()
   const language = useLanguage()
-  const { title } = useRoute().data
+  const { title } = useMatchedRoute().data
   const { articles } = useAsyncRouteData({ articles: [] }, { route: routes.list })
   return (
     <div>

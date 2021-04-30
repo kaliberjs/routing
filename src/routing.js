@@ -84,7 +84,7 @@ export function useRootContext() {
 
 export function useRoutes() {
   const { routeMap } = useRootContext()
-  const currentRoute = useRoute()
+  const currentRoute = useMatchedRoute()
   const match = useMatch()
 
   const hasChildren = currentRoute && Object.keys(currentRoute[routeSymbol].children).length
@@ -97,7 +97,7 @@ export function useRoutes() {
   )
 }
 
-export function useRoute() {
+export function useMatchedRoute() {
   const currentRoute = React.useContext(routeContext)
   const match = useMatch()
   if (!currentRoute || !match) return null

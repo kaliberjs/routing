@@ -318,7 +318,7 @@ function LocationProvider({
 This provides the context for all of the routing related hooks. It detects the difference between client and server side rendering: if `window` is undefined it will use the `initialLocation` for the match.
 
 ---
-### `useRouteChain`
+### `asRouteChain`
 
 ```js
 function asRouteChain(route: Route): Array<Route>
@@ -327,10 +327,10 @@ function asRouteChain(route: Route): Array<Route>
 Returns an array of all routes from the root of the route map up to (and including) the given route. This can be useful when rendering on the server and loading all required data.
 
 ---
-### `useRoute`
+### `useMatchedRoute`
 
 ```js
-function useRoute(): Route | null
+function useMatchedRoute(): Route | null
 ```
 
 Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.

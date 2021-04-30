@@ -1,4 +1,4 @@
-import { useRoute, useMatch, asRouteChain } from '@kaliber/routing'
+import { useMatchedRoute, useMatch, asRouteChain } from '@kaliber/routing'
 
 const routeDataContext = React.createContext(null)
 
@@ -29,7 +29,7 @@ export function RouteDataProvider({ children, initialData }) {
 export function useAsyncRouteData(defaultValue, { route: requestedRoute = undefined, extraArgs = undefined } = {}) {
   const initialRouteData = React.useContext(routeDataContext)
   if (!initialRouteData) throw new Error('Please use a RouteDataProvider')
-  const currentRoute = useRoute()
+  const currentRoute = useMatchedRoute()
   const route = requestedRoute || currentRoute
   const routeId = route()
 
