@@ -336,6 +336,15 @@ function useMatchedRoute(): Route | null
 Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
 
 ---
+### `useMatchedRouteData`
+
+```js
+function useMatchedRouteData(): any | null
+```
+
+Convenience function. Equivalent to `useMatchedRoute().data`.
+
+---
 ### `useLocation`
 
 ```js

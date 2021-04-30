@@ -105,6 +105,11 @@ export function useMatchedRoute() {
   return partiallyApplyReverseRoutes(currentRoute, match.params)
 }
 
+export function useMatchedRouteData() {
+  const currentRoute = useMatchedRoute()
+  return currentRoute && currentRoute.data
+}
+
 export function useRouteMap() {
   return useRootContext().routeMap
 }

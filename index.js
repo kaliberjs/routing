@@ -1,2 +1,6 @@
 export { asRouteMap, pick, pickRoute, asRouteChain, routeSymbol } from './src/routeMap'
-export { useNavigate, useMatchedRoute, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes, useLocation, useHistory, useRouteMap } from './src/routing'
+export {
+  useNavigate, useMatchedRoute, useMatchedRouteData, usePick, useRouting, useMatch,
+  useRoutes, useLocation, useHistory, useRouteMap,
+  Link, LocationProvider
+} from './src/routing'
