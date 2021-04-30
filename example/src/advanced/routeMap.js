@@ -34,7 +34,7 @@ export const routeMap = asRouteMap({
   }
 })
 async function fetchArticle({ articleId }) {
-  await second(1)
+  await resolveAfter({ seconds: 1 })
 
   return {
     title: `Artikel ${articleId}`,
@@ -43,7 +43,7 @@ async function fetchArticle({ articleId }) {
 }
 
 async function fetchArticles() {
-  await second(1)
+  await resolveAfter({ seconds: 1 })
 
   return [
     { title: `Artikel article1`, id: 'article1' },
@@ -52,8 +52,8 @@ async function fetchArticles() {
 }
 
 async function fetchArticleMetadata({ article }) {
-  await second(1)
+  await resolveAfter({ seconds: 1 })
   return { price: 10 }
 }
 
-async function second(x) { return new Promise(resolve => setTimeout(resolve, x * 1000)) }
+async function resolveAfter({ seconds }) { return new Promise(resolve => setTimeout(resolve, seconds * 1000)) }
