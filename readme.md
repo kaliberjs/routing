@@ -40,13 +40,11 @@ import { pick } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 async function resolve(pathname) {
-  const result = pick(pathname,
-    [routeMap, (params, route) => ({ status: 200, params, route })],
+  const result = await pick(pathname,
+    [routeMap, async (params, route) => ({ status: 200, data: await route.data(match.params) })],
     [routeMap.notFound, { status: 404 }],
   )
-  return 'route' in result
-    ? { status: result.status, data: await route.data(params) }
-    : result
+  return result
 }
 ```
 
