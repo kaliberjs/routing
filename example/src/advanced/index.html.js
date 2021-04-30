@@ -17,16 +17,16 @@ Index.routes = {
     const language = req.acceptsLanguages('nl', 'en') || 'nl'
     const languageTarget = `${basePath}${routeMap.language.home({ language })}`
 
-    const result = pick(location.pathname.replace(`${basePath}`, ''),
-      [routeMap, (params, route) => ({ status: 200, params, route })],
+    const result = await pick(location.pathname.replace(`${basePath}`, ''),
+      [routeMap, async (params, route) => (
+        { status: 200, data: { routeData: await fetchRouteData(route, params) } }
+      )],
       [routeMap.root, { status: 302, headers: { Location: languageTarget } }],
       [routeMap.language.notFound, { status: 404 }],
       [routeMap.language.articles.article.notFound, { status: 404 }]
     )
 
-    return 'route' in result
-      ? { ...result, data: { routeData: await fetchRouteData(result.route, result.params) } }
-      : result
+    return result
   }
 }
 
