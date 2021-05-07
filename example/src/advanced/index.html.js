@@ -5,7 +5,7 @@ import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
 import App from './App?universal'
 import { pick } from '@kaliber/routing'
-import { fetchRouteData } from './machinery/routeData'
+import { fetchRouteData } from './machinery/RouteData'
 import { routeMap } from './routeMap'
 
 // TODO, should we add another example directory for advanced and only show the base path concept here?

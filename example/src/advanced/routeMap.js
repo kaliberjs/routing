@@ -8,6 +8,7 @@ export const routeMap = asRouteMap({
     home: { path: '', data: { title: 'Home' } },
     articles: {
       path: { nl: 'artikelen', en: 'articles' },
+      // data: Articles.data
       data: { title: { nl: 'Artikelen', en: 'Articles' } },
 
       list: {

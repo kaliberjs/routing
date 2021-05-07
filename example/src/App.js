@@ -17,8 +17,8 @@ function Page() {
     <>
       <Navigation />
       {matchRoutes(
-        [routes.home, <Home />], // eslint-disable-line react/jsx-key
-        [routes.articles, <Articles />], // eslint-disable-line react/jsx-key
+        [routes.home, <Home />],
+        [routes.articles, <Articles />],
         [routes.articles.article, params => <Article {...{ params }} />],
         [routes.notFound, params => <NotFound {...{ params }} />],
       )}
@@ -63,7 +63,7 @@ function Articles() {
 function Article({ params: { id } }) {
   const { matchRoutes, matchRoute } = useRouting()
   const routes = useRoutes()
-  console.log(routes)
+
   return (
     <div>
       <h1>Article {id}</h1>

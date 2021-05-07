@@ -1,6 +1,7 @@
 import { useNavigate, useMatchedRouteData, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
-import { RouteDataProvider, useAsyncRouteData } from './machinery/routeData'
+import { RouteDataProvider, useAsyncRouteData } from './machinery/RouteData'
 import { routeMap } from './routeMap'
+import { useLanguage, LanguageContext } from './machinery/Language'
 
 export default function App({ initialLocation, basePath, initialRouteData }) {
   return (
@@ -21,16 +22,14 @@ function Page() {
     <Language {...{ language }}>
       <Navigation />
       {matchRoutes(
-        [subRoutes.home, <Home />], // eslint-disable-line react/jsx-key
-        [subRoutes.articles, <Articles />], // eslint-disable-line react/jsx-key
+        [subRoutes.home, <Home />],
+        [subRoutes.articles, <Articles />],
         [subRoutes.articles.article, params => <Article {...{ params }} />],
         [subRoutes.notFound, params => <NotFound {...{ params }} />],
       )}
     </Language>
   ))
 }
-
-const languageContext = React.createContext(null)
 
 function Language({ children, language }) {
   const navigate = useNavigate()
@@ -50,10 +49,7 @@ function Language({ children, language }) {
         onChange={e => e.currentTarget.checked && setLanguage('en')}
       />
       <div>
-        <languageContext.Provider
-          value={language}
-          {...{ children }}
-        />
+        <LanguageContext {...{ language, children }} />
       </div>
     </div>
   )
@@ -61,12 +57,6 @@ function Language({ children, language }) {
   function setLanguage(language) {
     navigate(route({ language }))
   }
-}
-
-function useLanguage() {
-  const context = React.useContext(languageContext)
-  if (!context) throw new Error('Please use a language context before trying to get the language')
-  return context
 }
 
 function Navigation() {

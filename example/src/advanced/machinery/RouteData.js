@@ -1,3 +1,7 @@
+/**
+ * Warning: do not use this code in production.
+ */
+
 import { useMatchedRoute, useMatch, asRouteChain } from '@kaliber/routing'
 
 const routeDataContext = React.createContext(null)
