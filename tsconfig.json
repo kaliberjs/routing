@@ -1,0 +1,26 @@
+{
+  "typeAcquisition": {
+    "enable": true
+  },
+  "include": [
+    "./src/**/*",
+    "./node_modules/**.*",
+    "./types/**/*"
+  ],
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "target": "ESNext",
+    "jsx": "react",
+    "baseUrl": ".",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "downlevelIteration": true
+  }
+}
