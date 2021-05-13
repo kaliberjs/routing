@@ -39,7 +39,7 @@ async function fetchArticle({ articleId }) {
 
   return {
     title: `Artikel ${articleId}`,
-    id: 'article1',
+    id: articleId,
   }
 }
 
