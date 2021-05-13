@@ -190,7 +190,7 @@ There are a few methods used for matching routes, some are used on the client, o
 - Client
   - `useRouting` (with `matchRoute` and `matchRoutes`)
   - `useMatchedRoute`
-  - `usePickedRoute`
+  - `useLocationMatch`
   - `usePick` (with `pick`)
 
 ---
@@ -242,10 +242,10 @@ function useMatchedRoute(): Route | null
 Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
 
 ---
-### `usePickedRoute`
+### `useLocationMatch`
 
 ```js
-function usePickedRoute(): { params: object, route: Route } | null
+function useLocationMatch(): { params: object, route: Route } | null
 ```
 
 Similar to `pickRoute` it returns the matched `Route` with it's `params` when a match was found, `null` otherwise. A small difference is that the returned route has the `params` partially applied to its reverse route function. This means that you do not need to supply any parameters that would be required by any parent routes.
@@ -259,7 +259,7 @@ The difference with `useMatchedRoute` is that this returns the route that was pi
 function usePick(): (...routes: Array<Route>) => Route
 ```
 
-Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the picked route (`usePickedRoute`).
+Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the picked route (`useLocationMatch`).
 
 ---
 ---
