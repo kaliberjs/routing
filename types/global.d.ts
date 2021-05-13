@@ -9,7 +9,7 @@ type RouteChildren = { [child: string]: Route }
 type RouteProps = {
   data?: any,
   path: Path,
-  [routeSymbol]: { parent: Route },
+  [routeSymbol]: { parent: Route, name: string },
   toString(): string,
 }
 type Path = string | { [language: string]: string }

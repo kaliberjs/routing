@@ -138,9 +138,9 @@ function score(routeSegments) {
 }
 
 function normalizeChildren(children, language, getParent = () => null, parentName = '') {
-  return mapValues(children, (childOrPath, name) => {
+  return mapValues(children, (childOrPath, key) => {
     const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
-    return normalize(route, language, getParent, parentName ? `${parentName}.${name}` : name)
+    return normalize(route, language, getParent, parentName ? `${parentName}.${key}` : key)
   })
 }
 
@@ -162,6 +162,7 @@ function createRoute(name, path, data, children, getParent) {
     [routeSymbol]: {
       get parent() { return getParent() },
       children,
+      name,
     },
   })
 }

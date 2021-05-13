@@ -49,7 +49,7 @@ type AsRouteChildren<A, Params> = { [K in keyof A]: AsRoute<A[K], Params> }
 type AsRouteProps<A extends RouteInputObject> = {
   path: A['path'],
   data: A['data'],
-  [routeSymbol]: { parent: Route },
+  [routeSymbol]: { parent: Route, name: string },
   toString(): string,
 }
 type AsParams<A> = LanguageSupport & (
