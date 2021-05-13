@@ -13,6 +13,7 @@
   ],
   "files": [
     "src/**",
+    "types/**",
     "LICENSE",
     "readme.md",
     "package.json"
