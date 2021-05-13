@@ -10,13 +10,13 @@ import { pickRoute, routeSymbol } from './routeMap'
     React.Context<
       {
         location: Location,
-        match: null | { params: object, route: Route },
+        pickedRoute: null | { params: object, route: Route },
       } |
       undefined
     >
   }
 */
-const locationContext = React.createContext(undefined)
+const locationAndPickedRouteContext = React.createContext(undefined)
 /** @type {React.Context<((to: number | string, x?: { state: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
 /** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
@@ -56,17 +56,17 @@ export function useRouting() {
 }
 
 export function useLocation() {
-  const context = React.useContext(locationContext)
+  const context = React.useContext(locationAndPickedRouteContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a location')
   return context.location
 }
 
-export function useMatch() {
-  const context = React.useContext(locationContext)
+export function usePickedRoute() {
+  const context = React.useContext(locationAndPickedRouteContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a location')
-  if (!context.match) return null
+  if (!context.pickedRoute) return null
 
-  const { params, route } = context.match
+  const { params, route } = context.pickedRoute
   return { params, route: partiallyApplyReverseRoutes(route, params) }
 }
 
@@ -85,24 +85,24 @@ export function useRootContext() {
 export function useRoutes() {
   const { routeMap } = useRootContext()
   const currentRoute = useMatchedRoute()
-  const match = useMatch()
+  const pickedRoute = usePickedRoute()
 
   const hasChildren = currentRoute && Object.keys(currentRoute[routeSymbol].children).length
   const parent = currentRoute && currentRoute[routeSymbol].parent
 
   return (
     hasChildren ? currentRoute :
-    parent && match ? partiallyApplyReverseRoutes(parent, match.params) :
+    parent && pickedRoute ? partiallyApplyReverseRoutes(parent, pickedRoute.params) :
     routeMap
   )
 }
 
 export function useMatchedRoute() {
   const currentRoute = React.useContext(routeContext)
-  const match = useMatch()
-  if (!currentRoute || !match) return null
+  const pickedRoute = usePickedRoute()
+  if (!currentRoute || !pickedRoute) return null
 
-  return partiallyApplyReverseRoutes(currentRoute, match.params)
+  return partiallyApplyReverseRoutes(currentRoute, pickedRoute.params)
 }
 
 export function useMatchedRouteData() {
@@ -121,13 +121,13 @@ export function useHistory() {
 }
 
 export function usePick() {
-  const match = useMatch()
+  const pickedRoute = usePickedRoute()
 
   return React.useCallback(
     (...routes) => {
-      if (!match) return null
+      if (!pickedRoute) return null
 
-      const { params, route } = match
+      const { params, route } = pickedRoute
       const availableRoutes = new Map(
         routes.map(route => [route[wrappedRouteSymbol] || route, route])
       )
@@ -143,7 +143,7 @@ export function usePick() {
         )
       }
     },
-    [match]
+    [pickedRoute]
   )
 }
 
@@ -207,7 +207,7 @@ function BrowserLocationProvider({ children, basePath }) {
 
   return <navigateContext.Provider
     value={navigate}
-    children={<LocationAndMatchContext {...{ location, children} } />}
+    children={<LocationAndPickedRouteContext {...{ location, children} } />}
   />
 }
 
@@ -221,21 +221,21 @@ function ServerLocationProvider({ initialLocation: location, children }) {
 
   return <navigateContext.Provider
     value={navigate}
-    children={<LocationAndMatchContext {...{ location, children} } />}
+    children={<LocationAndPickedRouteContext {...{ location, children} } />}
   />
 }
 
 /** @param {{ location: Location, children: any }} location */
-function LocationAndMatchContext({ location, children }) {
+function LocationAndPickedRouteContext({ location, children }) {
   const { routeMap, basePath } = useRootContext()
   const value = React.useMemo(
     () => {
       const normalizedPathname = location.pathname.replace(basePath, '')
-      return { location, match: pickRoute(normalizedPathname, routeMap) }
+      return { location, pickedRoute: pickRoute(normalizedPathname, routeMap) }
     },
     [location, routeMap, basePath]
   )
-  return <locationContext.Provider {...{ value, children }} />
+  return <locationAndPickedRouteContext.Provider {...{ value, children }} />
 }
 
 function RootContextProvider({ children, routeMap, basePath }) {

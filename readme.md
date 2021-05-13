@@ -188,9 +188,10 @@ There are a few methods used for matching routes, some are used on the client, o
   - `pickRoute`
   - `pick`
 - Client
-  - `useMatch`
-  - `usePick` (with `pick`)
   - `useRouting` (with `matchRoute` and `matchRoutes`)
+  - `useMatchedRoute`
+  - `usePickedRoute`
+  - `usePick` (with `pick`)
 
 ---
 ### `pickRoute`
@@ -220,24 +221,6 @@ return pick(location.pathname,
 )
 ```
 ---
-### `useMatch`
-
-```js
-function useMatch(): { params: object, route: Route } | null
-```
-
-Similar to `pickRoute` it returns the matched `Route` with it's `params` when a match was found, `null` otherwise. A small difference is that the returned route has the `params` partially applied to its reverse route function. This means that you do not need to supply any parameters that would be required by any parent routes.
-
----
-### `usePick`
-
-```js
-function usePick(): (...routes: Array<Route>) => Route
-```
-
-Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the currently matched route.
-
----
 ### `useRouting`
 
 ```js
@@ -247,6 +230,36 @@ function useRouting(): {
 }
 ```
 Mainly used inside the render tree. Allows you to render based on a matched route.
+
+---
+
+### `useMatchedRoute`
+
+```js
+function useMatchedRoute(): Route | null
+```
+
+Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
+
+---
+### `usePickedRoute`
+
+```js
+function usePickedRoute(): { params: object, route: Route } | null
+```
+
+Similar to `pickRoute` it returns the matched `Route` with it's `params` when a match was found, `null` otherwise. A small difference is that the returned route has the `params` partially applied to its reverse route function. This means that you do not need to supply any parameters that would be required by any parent routes.
+
+The difference with `useMatchedRoute` is that this returns the route that was picked from the `routeMap`, regardless of the matching that happened up to this point. This can be useful for things like language selectors.
+
+---
+### `usePick`
+
+```js
+function usePick(): (...routes: Array<Route>) => Route
+```
+
+Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the picked route (`usePickedRoute`).
 
 ---
 ---
@@ -325,15 +338,6 @@ function asRouteChain(route: Route): Array<Route>
 ```
 
 Returns an array of all routes from the root of the route map up to (and including) the given route. This can be useful when rendering on the server and loading all required data.
-
----
-### `useMatchedRoute`
-
-```js
-function useMatchedRoute(): Route | null
-```
-
-Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
 
 ---
 ### `useMatchedRouteData`

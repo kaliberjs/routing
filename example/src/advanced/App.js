@@ -1,4 +1,4 @@
-import { useNavigate, useMatchedRouteData, usePick, useRouting, useMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useNavigate, useMatchedRouteData, usePick, useRouting, usePickedRoute, Link, LocationProvider, useRoutes } from '@kaliber/routing'
 import { RouteDataProvider, useAsyncRouteData } from './machinery/RouteData'
 import { routeMap } from './routeMap'
 import { useLanguage, LanguageContext } from './machinery/Language'
@@ -33,7 +33,7 @@ function Page() {
 
 function Language({ children, language }) {
   const navigate = useNavigate()
-  const { route } = useMatch()
+  const { route } = usePickedRoute()
   return (
     <div>
       <label htmlFor='nl'>NL</label>

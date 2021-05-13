@@ -2,7 +2,7 @@
  * Warning: do not use this code in production.
  */
 
-import { useMatchedRoute, useMatch, asRouteChain } from '@kaliber/routing'
+import { useMatchedRoute, usePickedRoute, asRouteChain } from '@kaliber/routing'
 
 const routeDataContext = React.createContext(null)
 
@@ -42,7 +42,7 @@ export function useAsyncRouteData(defaultValue, { route: requestedRoute = undefi
   const [state, setState] = React.useState(() => initialRouteData[routeId] || defaultValue)
 
   const dataForRef = React.useRef(state === defaultValue ? null : routeId)
-  const { params } = useMatch()
+  const { params } = usePickedRoute()
 
   const getData = route.data
   const props = { ...params, ...extraArgs }
