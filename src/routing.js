@@ -195,8 +195,12 @@ function BrowserLocationProvider({ children, basePath }) {
   const history = getHistory()
   const [location, setLocation] = React.useState(() => history.location)
 
-  React.useEffect(
-    () => history.listen(({ location }) => setLocation(location)),
+  React.useLayoutEffect(
+    () => {
+      setLocation(history.location) // user might have navigated
+
+      return history.listen(({ location }) => setLocation(location))
+    },
     [history]
   )
 
