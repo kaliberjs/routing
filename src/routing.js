@@ -28,7 +28,6 @@ const inBrowser = typeof window !== 'undefined'
 
 const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
 
-// TODO: eslint plugin for key warning of pairs
 /**
   @template {JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
