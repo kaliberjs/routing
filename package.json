@@ -12,6 +12,8 @@
     "routing"
   ],
   "files": [
+    "index.js",
+    "index.d.ts",
     "src/**",
     "LICENSE",
     "readme.md",
