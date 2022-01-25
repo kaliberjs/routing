@@ -63,24 +63,22 @@ export function UniversalApp({ initialLocation }) {
 
 function Page() {
   const { matchRoutes } = useRouting()
-  const routes = useRoutes()
 
   return matchRoutes(
-    [routes.home, <Home />],
-    [routes.articles, <Articles />],
-    [routes.articles.article, params => <Article {...{ params }} />],
-    [routes.notFound, <NotFound />]
+    [routeMap.home, <Home />],
+    [routeMap.articles, <Articles />],
+    [routeMap.articles.article, params => <Article {...{ params }} />],
+    [routeMap.notFound, <NotFound />]
   )
 }
 
 function Articles() {
-  const routes = useRoutes()
   return (
     <div>
       <h1>Articles</h1>
       <ul>
-        <li><Link to={routes.article({ articleId: 'article1' })}>Article 1</Link></li>
-        <li><Link to={routes.article({ articleId: 'article2' })}>Article 2</Link></li>
+        <li><Link to={routeMap.articles.article({ articleId: 'article1' })}>Article 1</Link></li>
+        <li><Link to={routeMap.articles.article({ articleId: 'article2' })}>Article 2</Link></li>
       </ul>
     </div>
   )
@@ -291,29 +289,6 @@ function useNavigate(): (to: number | string, { state: object, replace?: boolean
 Allows you to navigate without using the `Link` component. Note that a call to the resulting function will not work when rendering on the server.
 
 ---
-### `useRoutes`
-
-```js
-function useRoutes(): object
-```
-
-Returns the available routes for the current context. It uses the following logic to determine which routes to server:
-
-- If the current route has children it returns the current route
-- If the current route does not have children but has a parent the parent is returned
-- Otherwise the route map is returned
-
-In code:
-
-```js
-return (
-  hasChildren ? currentRoute :
-  hasParent ? parent :
-  routeMap
-)
-```
-
----
 ---
 ## Other utilities
 
@@ -366,15 +341,6 @@ function useHistory(): { location, listen(listener), navigate(to, { state, repla
 ```
 
 Returns a reference to the history wrapper. Note that the resulting object can not be used in a non browser context. Also note that the navigate function here ignores the `basePath`.
-
----
-### `useRouteMap`
-
-```js
-function useRouteMap(): RouteMap
-```
-
-Convenience function to obtain the route map.
 
 ---
 ---
