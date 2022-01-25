@@ -5,7 +5,7 @@ import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
 /**
-  @typedef {{ pathname: string, search: string, hash: string, state?: object }} Location
+  @typedef {{ pathname: string, search: string, hash: string, state?: object, key: string }} Location
   @type {
     React.Context<
       {
@@ -17,7 +17,7 @@ import { pickRoute, routeSymbol } from './routeMap'
   }
 */
 const locationAndLocationMatchContext = React.createContext(undefined)
-/** @type {React.Context<((to: number | string, x?: { state: object, replace?: boolean }) => void) | undefined>} */
+/** @type {React.Context<((to: number | string, x?: { state?: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
 /** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
 const rootContext = React.createContext(undefined)
@@ -264,6 +264,11 @@ function resolve(basePath, to) {
    /en/articles/article1. Should the route to lang.articles.article()
    have prefilled { lang: 'en' } or { lang: 'en', aricleId: 'article1' }?
 */
+// TODO: See if you can type this:
+/**
+ * @param {Route} route
+ * @returns {Route}
+ */
 function partiallyApplyReverseRoutes(route, availableParams) {
   if (route[wrappedRouteSymbol]) throw new Error('Can not partially apply a partially applied route')
 
@@ -294,3 +299,8 @@ function shouldNavigate(e) {
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
 }
+
+/**
+ * @typedef {import('./types').Route} Route
+ * @typedef {import('./types').RouteMap} RouteMap
+ */
