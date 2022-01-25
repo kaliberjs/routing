@@ -5,7 +5,7 @@ import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
 /**
-  @typedef {{ pathname: string, search: string, hash: string, state?: object }} Location
+  @typedef {{ pathname: string, search: string, hash: string, state?: object, key: string }} Location
   @type {
     React.Context<
       {
@@ -17,7 +17,7 @@ import { pickRoute, routeSymbol } from './routeMap'
   }
 */
 const locationAndLocationMatchContext = React.createContext(undefined)
-/** @type {React.Context<((to: number | string, x?: { state: object, replace?: boolean }) => void) | undefined>} */
+/** @type {React.Context<((to: number | string, x?: { state?: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
 /** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
 const rootContext = React.createContext(undefined)
@@ -28,7 +28,6 @@ const inBrowser = typeof window !== 'undefined'
 
 const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
 
-// TODO: eslint plugin for key warning of pairs
 /**
   @template {JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
@@ -82,6 +81,7 @@ export function useRootContext() {
   return context
 }
 
+/** @deprecated Please import routeMap and use the route map directly */
 export function useRoutes() {
   const { routeMap } = useRootContext()
   const currentRoute = useMatchedRoute()
@@ -110,6 +110,7 @@ export function useMatchedRouteData() {
   return currentRoute && currentRoute.data
 }
 
+/** @deprecated Import the routeMap, it provides type safety */
 export function useRouteMap() {
   return useRootContext().routeMap
 }
@@ -129,7 +130,10 @@ export function usePick() {
 
       const { params, route } = locationMatch
       const availableRoutes = new Map(
-        routes.map(route => [route[wrappedRouteSymbol] || route, route])
+        routes.map((route, i) => {
+          if (!route) throw new Error(`Route missing at index ${i}`)
+          return [route[wrappedRouteSymbol] || route, route]
+        })
       )
       return selectRoute(route, params)
 
@@ -264,6 +268,11 @@ function resolve(basePath, to) {
    /en/articles/article1. Should the route to lang.articles.article()
    have prefilled { lang: 'en' } or { lang: 'en', aricleId: 'article1' }?
 */
+// TODO: See if you can type this:
+/**
+ * @param {Route} route
+ * @returns {Route}
+ */
 function partiallyApplyReverseRoutes(route, availableParams) {
   if (route[wrappedRouteSymbol]) throw new Error('Can not partially apply a partially applied route')
 
@@ -294,3 +303,8 @@ function shouldNavigate(e) {
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
 }
+
+/**
+ * @typedef {import('./types').Route} Route
+ * @typedef {import('./types').RouteMap} RouteMap
+ */

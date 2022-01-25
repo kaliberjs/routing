@@ -2,7 +2,7 @@ import { asRouteMap } from '@kaliber/routing'
 export const routeMap = asRouteMap({
   root: '',
   test: { path: '' },
-  language: {
+  app: {
     path: ':language',
 
     home: { path: '', data: { title: 'Home' } },

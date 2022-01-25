@@ -35,14 +35,14 @@ export function useAsyncRouteData(defaultValue, { route: requestedRoute = undefi
   if (!initialRouteData) throw new Error('Please use a RouteDataProvider')
   const currentRoute = useMatchedRoute()
   const route = requestedRoute || currentRoute
-  const routeId = route()
+  const { params } = useLocationMatch()
+  const routeId = route(params)
 
   if (typeof route.data !== 'function') throw new Error(`Route ${route} (${routeId}) does not have a function as data`)
 
   const [state, setState] = React.useState(() => initialRouteData[routeId] || defaultValue)
 
   const dataForRef = React.useRef(state === defaultValue ? null : routeId)
-  const { params } = useLocationMatch()
 
   const getData = route.data
   const props = { ...params, ...extraArgs }

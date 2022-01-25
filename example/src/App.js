@@ -1,9 +1,9 @@
-import { useRouting, Link, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useRouting, Link, LocationProvider } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 
 export default function App({ initialLocation }) {
   return (
-    <LocationProvider {...{ initialLocation, routeMap }}>
+    <LocationProvider {...{ initialLocation, routeMap }} basePath=''>
       <Page />
     </LocationProvider>
   )
@@ -11,7 +11,7 @@ export default function App({ initialLocation }) {
 
 function Page() {
   const { matchRoutes } = useRouting()
-  const routes = useRoutes()
+  const routes = routeMap
 
   return (
     <>
@@ -27,7 +27,7 @@ function Page() {
 }
 
 function Navigation() {
-  const routes = useRoutes()
+  const routes = routeMap
   return (
     <div>
       <Link to={routes.home()}>Home</Link>
@@ -38,7 +38,7 @@ function Navigation() {
 }
 
 function Home() {
-  const routes = useRoutes()
+  const routes = routeMap
   return (
     <div>
       Home
@@ -48,7 +48,7 @@ function Home() {
 }
 
 function Articles() {
-  const routes = useRoutes()
+  const routes = routeMap.articles
   return (
     <div>
       articles
@@ -62,15 +62,15 @@ function Articles() {
 
 function Article({ params: { id } }) {
   const { matchRoutes, matchRoute } = useRouting()
-  const routes = useRoutes()
+  const routes = routeMap.articles.article
 
   return (
     <div>
       <h1>Article {id}</h1>
       <div>
-        <Link to={routes.main()}>Main</Link>
-        <Link to={routes.tab1()}>Tab1</Link>
-        <Link to={routes.tab2()}>Tab2</Link>
+        <Link to={routes.main({ id })}>Main</Link>
+        <Link to={routes.tab1({ id })}>Tab1</Link>
+        <Link to={routes.tab2({ id })}>Tab2</Link>
       </div>
       <div>
         {matchRoutes(

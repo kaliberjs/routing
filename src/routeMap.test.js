@@ -512,3 +512,5 @@ describe('asRouteChain', () => {
 })
 
 function asTuple(...args) { return args }
+
+/** @typedef {import('./types').RouteMap} RouteMap */
