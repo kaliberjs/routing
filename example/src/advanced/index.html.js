@@ -15,15 +15,15 @@ const basePath = '/advanced' // TODO: Get from file name, maybe also add a publi
 Index.routes = {
   async match(location, req) {
     const language = req.acceptsLanguages('nl', 'en') || 'nl'
-    const languageTarget = `${basePath}${routeMap.language.home({ language })}`
+    const languageTarget = `${basePath}${routeMap.app.home({ language })}`
 
     const result = await pick(location.pathname.replace(`${basePath}`, ''),
       [routeMap, async (params, route) => (
         { status: 200, data: { routeData: await fetchRouteData(route, params) } }
       )],
       [routeMap.root, { status: 302, headers: { Location: languageTarget } }],
-      [routeMap.language.notFound, { status: 404 }],
-      [routeMap.language.articles.article.notFound, { status: 404 }]
+      [routeMap.app.notFound, { status: 404 }],
+      [routeMap.app.articles.article.notFound, { status: 404 }]
     )
 
     return result

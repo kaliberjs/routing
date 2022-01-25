@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "@kaliber/build": "^0.0.110"
+    "@kaliber/build": "^0.0.120"
   },
   "scripts": {
     "start": "npm-run-all --parallel watch serve.dev",

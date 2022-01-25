@@ -1,4 +1,4 @@
-import { useNavigate, useMatchedRouteData, usePick, useRouting, useLocationMatch, Link, LocationProvider, useRoutes } from '@kaliber/routing'
+import { useNavigate, useMatchedRouteData, usePick, useRouting, useLocationMatch, Link, LocationProvider } from '@kaliber/routing'
 import { RouteDataProvider, useAsyncRouteData } from './machinery/RouteData'
 import { routeMap } from './routeMap'
 import { useLanguage, LanguageContext } from './machinery/Language'
@@ -15,10 +15,10 @@ export default function App({ initialLocation, basePath, initialRouteData }) {
 
 function Page() {
   const { matchRoute, matchRoutes } = useRouting()
-  const mainRoutes = useRoutes()
-  const subRoutes = mainRoutes.language
+  const mainRoutes = routeMap
+  const subRoutes = mainRoutes.app
 
-  return matchRoute(mainRoutes.language, ({ language }) => (
+  return matchRoute(mainRoutes.app, ({ language }) => (
     <Language {...{ language }}>
       <Navigation />
       {matchRoutes(
@@ -60,33 +60,33 @@ function Language({ children, language }) {
 }
 
 function Navigation() {
-  const routes = useRoutes()
+  const routes = routeMap.app
   const language = useLanguage()
   return (
     <div>
-      <Link to={routes.home()}>{routes.home.data.title}</Link>
-      <Link to={routes.articles()}>{routes.articles.data.title[language]}</Link>
-      <Link to={routes.articles.article({ articleId: 'article1' })}>{{ en: 'Featured article', nl: 'Uitgelicht artikel' }[language]}</Link>
+      <Link to={routes.home({ language })}>{routes.home.data.title}</Link>
+      <Link to={routes.articles({ language })}>{routes.articles.data.title[language]}</Link>
+      <Link to={routes.articles.article({ language, articleId: 'article1' })}>{{ en: 'Featured article', nl: 'Uitgelicht artikel' }[language]}</Link>
     </div>
   )
 }
 
 function Home() {
-  const routes = useRoutes()
+  const routes = routeMap.app
   const language = useLanguage()
   const { title } = useMatchedRouteData()
 
   return (
     <div>
       {title}
-      <Link to={routes.articles()}>{routes.articles.data.title[language]}</Link>
+      <Link to={routes.articles({ language })}>{routes.articles.data.title[language]}</Link>
     </div>
   )
 }
 
 function Articles() {
-  const routes = useRoutes()
   const language = useLanguage()
+  const routes = routeMap.app.articles
   const { title } = useMatchedRouteData()
   const { articles } = useAsyncRouteData({ articles: [] }, { route: routes.list })
   return (
@@ -95,7 +95,7 @@ function Articles() {
       <div>
         {articles.map(x =>
           <div key={x.id}>
-            <Link to={routes.article({ articleId: x.id })}>{x.title}</Link>
+            <Link to={routes.article({ language, articleId: x.id })}>{x.title}</Link>
           </div>
         )}
       </div>
@@ -105,9 +105,10 @@ function Articles() {
 
 function Article({ params: { articleId } }) {
   const { matchRoutes, matchRoute } = useRouting()
-  const routes = useRoutes()
+  const routes = routeMap.app.articles.article
   const pick = usePick()
   const { article } = useAsyncRouteData({ article: {} })
+  const language = useLanguage()
 
   const atValidTab = Boolean(pick(routes.main, routes.tab1, routes.tab2))
 
@@ -116,9 +117,9 @@ function Article({ params: { articleId } }) {
       <h1>{article.title} ({article.id})</h1>
       {atValidTab && (
         <div>
-          <Link to={routes.main()}>Main</Link>
-          <Link to={routes.tab1()}>Tab1</Link>
-          <Link to={routes.tab2()}>Tab2</Link>
+          <Link to={routes.main({ articleId, language })}>Main</Link>
+          <Link to={routes.tab1({ articleId, language })}>Tab1</Link>
+          <Link to={routes.tab2({ articleId, language })}>Tab2</Link>
         </div>
       )}
       <div>
