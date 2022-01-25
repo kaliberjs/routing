@@ -82,6 +82,7 @@ export function useRootContext() {
   return context
 }
 
+/** @deprecated Please import routeMap and use the route map directly */
 export function useRoutes() {
   const { routeMap } = useRootContext()
   const currentRoute = useMatchedRoute()
