@@ -111,6 +111,7 @@ export function useMatchedRouteData() {
   return currentRoute && currentRoute.data
 }
 
+/** @deprecated Import the routeMap, it provides type safety */
 export function useRouteMap() {
   return useRootContext().routeMap
 }
