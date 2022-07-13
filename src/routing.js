@@ -163,6 +163,20 @@ export function LocationProvider({
   } />
 }
 
+export function StaticLocationProvider({ location, children }) {
+  if (!location) throw new Error(`Your need to supply a location for the static location provider`)
+
+  const navigate = React.useCallback(
+    () => { throw new Error('You can not navigate in a static location provider') },
+    []
+  )
+
+  return <navigateContext.Provider
+    value={navigate}
+    children={<LocationAndLocationMatchContext {...{ location, children} } />}
+  />
+}
+
 export function Link({
   to,
   replace = undefined,
