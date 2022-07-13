@@ -195,6 +195,8 @@ function normalizePath(path, language) {
 
 function resolve(path, base, params) {
   const pathValue = interpolate(path, params)
+  if (!pathValue) return base
+
   return `${base}/${pathValue}`
 }
 
