@@ -1,6 +1,7 @@
 import { usePick, useRouting, Link, LocationProvider, useLocation, StaticLocationProvider } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 import { animated, useTransition } from 'react-spring'
+import styles from './App.css'
 
 export default function App({ initialLocation }) {
   return (
@@ -16,18 +17,18 @@ function Page() {
 
   const transition = useTransition(location, {
     key: pageRoutePath,
-    from: { opacity: 0, translateX: '-500px' },
-    enter: { opacity: 1, translateX: '0' },
-    leave: { opacity: 0, translateX: '500px' }
+    from: { opacity: 0, x: '-500px' },
+    enter: { opacity: 1, x: '0' },
+    leave: { opacity: 0, x: '500px' }
   })
 
   return (
-    <>
+    <div className={styles.componentPage}>
       <Navigation />
       {transition((props, transitionLocation) => {
         const isLeaving = location !== transitionLocation
         return (
-          <animated.div style={{ ...(isLeaving && { position: 'absolute' }), ...props }}>
+          <animated.div className={styles.content} style={props}>
             {isLeaving
               ? <StaticLocationProvider location={transitionLocation} children={<Content />} />
               : <Content />
@@ -35,7 +36,7 @@ function Page() {
           </animated.div>
         )
       })}
-    </>
+    </div>
   )
 }
 
