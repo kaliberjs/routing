@@ -1,5 +1,6 @@
 module.exports = {
   kaliber: {
-    compileWithBabel: [/@kaliber\//]
+    compileWithBabel: [/@kaliber\//],
+    symlinks: false,
   }
 }
