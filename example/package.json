@@ -4,8 +4,8 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "@kaliber/build": "^0.0.120",
-    "react-spring": "^9.5.0"
+    "@kaliber/build": "^0.0.128",
+    "react-spring": "^9.5.2"
   },
   "scripts": {
     "start": "npm-run-all --parallel watch serve.dev",
