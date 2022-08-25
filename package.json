@@ -1,6 +1,6 @@
 {
   "name": "@kaliber/routing",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "main": "index.js",
   "sideEffects": false,
   "publishConfig": {
@@ -12,6 +12,8 @@
     "routing"
   ],
   "files": [
+    "index.js",
+    "index.d.ts",
     "src/**",
     "LICENSE",
     "readme.md",
