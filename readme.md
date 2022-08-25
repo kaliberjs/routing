@@ -306,6 +306,18 @@ function LocationProvider({
 This provides the context for all of the routing related hooks. It detects the difference between client and server side rendering: if `window` is undefined it will use the `initialLocation` for the match.
 
 ---
+### `StaticLocationProvider`
+
+```js
+function StaticLocationProvider({
+  location: { pathname: string, search: string, hash: string },
+  children,
+})
+```
+
+This provides a static location context for all of the routing related hooks of its children. It can be used to render content based on a location that is not the current location. This is useful for animations.
+
+---
 ### `asRouteChain`
 
 ```js
