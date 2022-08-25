@@ -1,5 +1,7 @@
-import { useRouting, Link, LocationProvider } from '@kaliber/routing'
+import { usePick, useRouting, Link, LocationProvider, useLocation, StaticLocationProvider } from '@kaliber/routing'
 import { routeMap } from './routeMap'
+import { animated, useTransition } from 'react-spring'
+import styles from './App.css'
 
 export default function App({ initialLocation }) {
   return (
@@ -10,19 +12,43 @@ export default function App({ initialLocation }) {
 }
 
 function Page() {
+  const location = useLocation()
+  const pageRoutePath = usePageRoutePath()
+
+  const transition = useTransition(location, {
+    key: pageRoutePath,
+    from: { opacity: 0, x: '-500px' },
+    enter: { opacity: 1, x: '0' },
+    leave: { opacity: 0, x: '500px' }
+  })
+
+  return (
+    <div className={styles.componentPage}>
+      <Navigation />
+      {transition((props, transitionLocation) => {
+        const isLeaving = location !== transitionLocation
+        return (
+          <animated.div className={styles.content} style={props}>
+            {isLeaving
+              ? <StaticLocationProvider location={transitionLocation} children={<Content />} />
+              : <Content />
+            }
+          </animated.div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Content() {
   const { matchRoutes } = useRouting()
   const routes = routeMap
 
-  return (
-    <>
-      <Navigation />
-      {matchRoutes(
-        [routes.home, <Home />],
-        [routes.articles, <Articles />],
-        [routes.articles.article, params => <Article {...{ params }} />],
-        [routes.notFound, params => <NotFound {...{ params }} />],
-      )}
-    </>
+  return matchRoutes(
+    [routes.home, <Home />],
+    [routes.articles, <Articles />],
+    [routes.articles.article, params => <Article {...{ params }} />],
+    [routes.notFound, params => <NotFound {...{ params }} />],
   )
 }
 
@@ -90,4 +116,15 @@ function NotFound({ params: { '*': path } }) {
       Nothing found at {path}
     </div>
   )
+}
+
+function usePageRoutePath() {
+  const pick = usePick()
+  const { params, route } = pick(
+    routeMap.home,
+    routeMap.articles,
+    routeMap.articles.article,
+    routeMap.notFound,
+  )
+  return route(params)
 }

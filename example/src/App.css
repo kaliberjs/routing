@@ -1,0 +1,11 @@
+.componentPage {
+  display: grid;
+
+  & > * {
+    grid-column: 1;
+  }
+
+  & > .content {
+    grid-row: 2;
+  }
+}
