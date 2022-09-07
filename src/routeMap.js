@@ -184,7 +184,7 @@ function withReverseRoute(config, route) {
       ''
     )
 
-    return `${resolvedPath}${trailingSlash && !resolvedPath.endsWith('/')  ?  '/' : ''}`
+    return `${resolvedPath}${trailingSlash && !resolvedPath.endsWith('/') ? '/' : ''}`
   }
 }
 
