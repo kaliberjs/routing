@@ -93,10 +93,13 @@ function Articles() {
 A route map defines the routing structure of the application. It is created by passing a map of routes into the `asRouteMap` function:
 
 ```js
-asRouteMap({
-  route1: ...,
-  route2: ...,
-})
+asRouteMap(
+  {
+    route1: ...,
+    route2: ...,
+  },
+  { trailingSlash: true } // reverse route behavior, default is false
+)
 ```
 
 The rules of `asRouteMap` is a structure that is similar to the original structure with a few differences:
@@ -176,6 +179,18 @@ const map = asRouteMap({
 console.log(map.route1()) // "/route1"
 console.log(map.route1.route2({ route2: 'route2' })) // "/route1/route2"
 ```
+
+Note that you can force the reverse routes to have a trailing slash with the option `trailingSlash` set to `true`:
+
+```js
+asRouteMap(
+  {
+    ...
+  },
+  { trailingSlash: true }
+)
+```
+
 ---
 ---
 ## Matching
