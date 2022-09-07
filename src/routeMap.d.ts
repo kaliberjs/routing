@@ -1,9 +1,9 @@
-import type { Route, RouteMap, Narrowable, AsRouteMap, HandlerOf, ReturnTypeOf, ReturnTypesOf } from './types'
+import type { Route, RouteMap, Narrowable, AsRouteMap, HandlerOf, ReturnTypeOf, ReturnTypesOf, Config } from './types'
 
 export function asRouteMap<
   N extends Narrowable,
   T extends { [k: string]: N | T | [] }// & RouteMapInput
->(input: T): AsRouteMap<T>
+>(input: T, config?: Config): AsRouteMap<T>
 
 export function pick<
   A,

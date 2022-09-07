@@ -154,6 +154,46 @@ describe('asRouteMap', () => {
         expect(() => x.y({ language: 'de' })).toThrowError(/language/)
       })
     })
+    describe('reverse routing with trailing slash', () => {
+      test('path static', () => {
+        const { x } = asRouteMap({ x: { path: 'y' } }, { trailingSlash: true })
+        expect(x()).toBe('/y/')
+      })
+      test('path dynamic', () => {
+        const map = asRouteMap({ x: { path: 'a/:y/b' } }, { trailingSlash: true })
+        expect(map.x({ y: 'z' })).toBe('/a/z/b/')
+      })
+      test('localized path static', () => {
+        const path = { en: 'a', nl: 'b' }
+        const { x } = asRouteMap({ x: { path } }, { trailingSlash: true })
+        expect(x({ language: 'en' })).toEqual('/a/')
+        expect(x({ language: 'nl' })).toEqual('/b/')
+      })
+      test('localized path dynamic', () => {
+        const map = asRouteMap(
+          { x: { path: { en: 'x/:a/y', nl: 'a/:b/b' } } },
+          { trailingSlash: true }
+        )
+        const { x } = map
+        expect(x({ language: 'en', a: 'c', b: 'd' })).toEqual('/x/c/y/')
+        expect(x({ language: 'nl', a: 'c', b: 'd' })).toEqual('/a/d/b/')
+      })
+      test('automatic language selection', () => {
+        const { x } = asRouteMap({
+          x: {
+            path: ':language',
+
+            y: { path: { en: 'a', nl: 'b' } }
+          }
+        })
+        expect(x({ language: 'en' })).toBe('/en')
+        expect(x.y({ language: 'en' })).toBe('/en/a')
+        expect(x({ language: 'nl' })).toBe('/nl')
+        expect(x.y({ language: 'nl' })).toBe('/nl/b')
+        expect(x({ language: 'de' })).toBe('/de')
+        expect(() => x.y({ language: 'de' })).toThrowError(/language/)
+      })
+    })
     describe('child routes', () => {
       test('minimal', () => {
         const { x } = asRouteMap({ x: { path: 'y', child: 'z' } })
@@ -162,12 +202,23 @@ describe('asRouteMap', () => {
         expect(x()).toBe('/y')
         expect(x.child()).toBe('/y/z')
       })
+      test('minimal with trailing slash', () => {
+        const { x } = asRouteMap({ x: { path: 'y', child: 'z' } }, { trailingSlash: true })
+        expect(x()).toBe('/y/')
+        expect(x.child()).toBe('/y/z/')
+      })
       test('nested', () => {
         const { x } = asRouteMap({ x: { path: 'a', child: { path: 'b', nested: 'c' } } })
         expect(x.child.nested).toBeDefined()
         expect(x()).toBe('/a')
         expect(x.child()).toBe('/a/b')
         expect(x.child.nested()).toBe('/a/b/c')
+      })
+      test('nested with trailing slash', () => {
+        const { x } = asRouteMap({ x: { path: 'a', child: { path: 'b', nested: 'c' } } }, { trailingSlash: true })
+        expect(x()).toBe('/a/')
+        expect(x.child()).toBe('/a/b/')
+        expect(x.child.nested()).toBe('/a/b/c/')
       })
       test('localized leaf', () => {
         const { x } = asRouteMap({ x: {
@@ -181,6 +232,25 @@ describe('asRouteMap', () => {
         expect(x.child()).toBe('/a/b')
         expect(x.child.nested({ language: 'en' })).toBe('/a/b/c')
         expect(x.child.nested({ language: 'nl' })).toBe('/a/b/d')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
+      })
+      test('localized leaf with trailing slash', () => {
+        const { x } = asRouteMap(
+          {
+              x: {
+              path: 'a',
+              child: {
+                path: 'b',
+                nested: { path: { en: 'c', nl: 'd' } },
+              }
+            }
+          },
+          { trailingSlash: true }
+        )
+        expect(x()).toBe('/a/')
+        expect(x.child()).toBe('/a/b/')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/b/c/')
+        expect(x.child.nested({ language: 'nl' })).toBe('/a/b/d/')
         expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('localized branch', () => {
@@ -199,6 +269,22 @@ describe('asRouteMap', () => {
         expect(x.child.nested({ language: 'nl' })).toBe('/a/c/d')
         expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
+      test('localized branch with trailing slash', () => {
+        const map = {
+          path: 'a',
+          child: {
+            path: { en: 'b', nl: 'c' },
+            nested: 'd',
+          }
+        }
+        const { x } = asRouteMap({ x: map }, { trailingSlash: true })
+        expect(x()).toBe('/a/')
+        expect(x.child({ language: 'en' })).toBe('/a/b/')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/b/d/')
+        expect(x.child({ language: 'nl' })).toBe('/a/c/')
+        expect(x.child.nested({ language: 'nl' })).toBe('/a/c/d/')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
+      })
       test('localized root', () => {
         const { x } = asRouteMap({ x: {
           path: { en: 'a', nl: 'b' },
@@ -213,6 +299,27 @@ describe('asRouteMap', () => {
         expect(x({ language: 'nl' })).toBe('/b')
         expect(x.child({ language: 'nl' })).toBe('/b/c')
         expect(x.child.nested({ language: 'nl' })).toBe('/b/c/d')
+        expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
+      })
+      test('localized root with trailing slash', () => {
+        const { x } = asRouteMap(
+          {
+            x: {
+              path: { en: 'a', nl: 'b' },
+              child: {
+                path: 'c',
+                nested: 'd',
+              }
+            }
+          },
+          { trailingSlash: true }
+        )
+        expect(x({ language: 'en' })).toBe('/a/')
+        expect(x.child({ language: 'en' })).toBe('/a/c/')
+        expect(x.child.nested({ language: 'en' })).toBe('/a/c/d/')
+        expect(x({ language: 'nl' })).toBe('/b/')
+        expect(x.child({ language: 'nl' })).toBe('/b/c/')
+        expect(x.child.nested({ language: 'nl' })).toBe('/b/c/d/')
         expect(() => x.child.nested({ language: 'de' })).toThrowError(/language/)
       })
       test('combined dynamic reverse routing', () => {
@@ -230,6 +337,27 @@ describe('asRouteMap', () => {
         expect(x({ a: 'i' })).toBe('/i/b')
         expect(x.child({ language: 'nl', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/k/f')
         expect(x.child.nested({ language: 'nl', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/k/f/l/h')
+      })
+      test('combined dynamic reverse routing with trailing slash', () => {
+        const map = asRouteMap(
+          {
+            x: {
+              path: ':a/b',
+              child: {
+                path: { en: ':c/e', nl: ':d/f' },
+                nested: ':g/h',
+              }
+            }
+          },
+          { trailingSlash: true }
+        )
+        const { x } = map
+        expect(x({ a: 'i' })).toBe('/i/b/')
+        expect(x.child({ language: 'en', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/j/e/')
+        expect(x.child.nested({ language: 'en', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/j/e/l/h/')
+        expect(x({ a: 'i' })).toBe('/i/b/')
+        expect(x.child({ language: 'nl', a: 'i', c: 'j', d: 'k' })).toBe('/i/b/k/f/')
+        expect(x.child.nested({ language: 'nl', a: 'i', c: 'j', d: 'k', g: 'l' })).toBe('/i/b/k/f/l/h/')
       })
     })
   })
