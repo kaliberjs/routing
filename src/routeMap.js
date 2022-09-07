@@ -15,8 +15,8 @@ import { callOrReturn, mapValues, throwError } from './utils'
 export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
-export function asRouteMap(map, language = undefined) {
-  const children = normalizeChildren(map, language)
+export function asRouteMap(map, config = {}) {
+  const children = normalizeChildren(config, map)
   return {
     ...children,
     [routeMapSymbol]: { children }
@@ -137,24 +137,24 @@ function score(routeSegments) {
   )
 }
 
-function normalizeChildren(children, language, getParent = () => null, parentName = '') {
+function normalizeChildren(config, children, getParent = () => null, parentName = '') {
   return mapValues(children, (childOrPath, key) => {
     const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
-    return normalize(route, language, getParent, parentName ? `${parentName}.${key}` : key)
+    return normalize(config, route, getParent, parentName ? `${parentName}.${key}` : key)
   })
 }
 
-function normalize(routeInput, language, getParent, name) {
+function normalize(config, routeInput, getParent, name) {
   const { path, data = undefined, ...children } = routeInput
   if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)
 
-  const normalizedChildren = normalizeChildren(children, language, () => route, name)
-  const route = createRoute(name, path, data, normalizedChildren, getParent)
+  const normalizedChildren = normalizeChildren(config, children, () => route, name)
+  const route = createRoute(config, name, path, data, normalizedChildren, getParent)
   return route
 }
 
-function createRoute(name, path, data, children, getParent) {
-  return withReverseRoute({
+function createRoute(config, name, path, data, children, getParent) {
+  return withReverseRoute(config, {
     ...children,
     toString() { return name },
     path,
@@ -167,13 +167,14 @@ function createRoute(name, path, data, children, getParent) {
   })
 }
 
-function withReverseRoute(route) {
+function withReverseRoute(config, route) {
+  const { trailingSlash = false } = config
   return Object.assign(reverseRoute, route)
 
   function reverseRoute(params = {}) {
     const parentPaths = getParents(route).map(x => x.path)
 
-    return [...parentPaths, route.path].reduce(
+    const resolvedPath = [...parentPaths, route.path].reduce(
       (base, path) => {
         const { language } = params
         const normalizedPath = normalizePath(path, language)
@@ -182,6 +183,8 @@ function withReverseRoute(route) {
       },
       ''
     )
+
+    return `${resolvedPath}${trailingSlash && !resolvedPath.endsWith('/') ? '/' : ''}`
   }
 }
 

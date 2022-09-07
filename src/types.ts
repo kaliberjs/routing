@@ -57,3 +57,7 @@ type StringAsParams<A> =
   A extends `*` ? '*' :
   never
 type LanguageSupport = { language?: string }
+
+export type Config = {
+  trailingSlash?: boolean
+}
