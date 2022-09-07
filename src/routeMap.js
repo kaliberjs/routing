@@ -15,8 +15,8 @@ import { callOrReturn, mapValues, throwError } from './utils'
 export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
-export function asRouteMap(map, language = undefined) {
-  const children = normalizeChildren(map, language)
+export function asRouteMap(map) {
+  const children = normalizeChildren(map)
   return {
     ...children,
     [routeMapSymbol]: { children }
@@ -137,18 +137,18 @@ function score(routeSegments) {
   )
 }
 
-function normalizeChildren(children, language, getParent = () => null, parentName = '') {
+function normalizeChildren(children, getParent = () => null, parentName = '') {
   return mapValues(children, (childOrPath, key) => {
     const route = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
-    return normalize(route, language, getParent, parentName ? `${parentName}.${key}` : key)
+    return normalize(route, getParent, parentName ? `${parentName}.${key}` : key)
   })
 }
 
-function normalize(routeInput, language, getParent, name) {
+function normalize(routeInput, getParent, name) {
   const { path, data = undefined, ...children } = routeInput
   if (path === undefined) throw new Error(`No path found in ${JSON.stringify(routeInput)}`)
 
-  const normalizedChildren = normalizeChildren(children, language, () => route, name)
+  const normalizedChildren = normalizeChildren(children, () => route, name)
   const route = createRoute(name, path, data, normalizedChildren, getParent)
   return route
 }
