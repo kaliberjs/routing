@@ -165,14 +165,16 @@ export function LocationProvider({
 
 export function StaticLocationProvider({ location, children }) {
   if (!location) throw new Error(`Your need to supply a location for the static location provider`)
+  const { location: locationLive } = React.useContext(locationAndLocationMatchContext)
 
-  const navigate = React.useCallback(
+  const navigateStatic = React.useCallback(
     () => { throw new Error('You can not navigate in a static location provider') },
     []
   )
+  const navigateLive = React.useContext(navigateContext)
 
   return <navigateContext.Provider
-    value={navigate}
+    value={location === locationLive ? navigateLive : navigateStatic}
     children={<LocationAndLocationMatchContext {...{ location, children} } />}
   />
 }
