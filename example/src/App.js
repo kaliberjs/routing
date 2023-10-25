@@ -25,17 +25,14 @@ function Page() {
   return (
     <div className={styles.componentPage}>
       <Navigation />
-      {transition((props, transitionLocation) => {
-        const isLeaving = location !== transitionLocation
-        return (
-          <animated.div className={styles.content} style={props}>
-            {isLeaving
-              ? <StaticLocationProvider location={transitionLocation} children={<Content />} />
-              : <Content />
-            }
-          </animated.div>
-        )
-      })}
+      {transition((props, transitionLocation) => (
+        <animated.div className={styles.content} style={props}>
+          <StaticLocationProvider location={transitionLocation} >
+            <Content />
+          </StaticLocationProvider>
+        </animated.div>
+      ))}
+
     </div>
   )
 }
@@ -90,6 +87,8 @@ function Article({ params: { id } }) {
   const { matchRoutes, matchRoute } = useRouting()
   const routes = routeMap.articles.article
 
+  const counter = useCounter()
+
   return (
     <div>
       <h1>Article {id}</h1>
@@ -98,6 +97,7 @@ function Article({ params: { id } }) {
         <Link to={routes.tab1({ id })}>Tab1</Link>
         <Link to={routes.tab2({ id })}>Tab2</Link>
       </div>
+      <h2>{counter}</h2>
       <div>
         {matchRoutes(
           [routes.main, 'Main content'],
@@ -108,6 +108,20 @@ function Article({ params: { id } }) {
       {matchRoute(routes.tab1, <div>Side bar for tab 1</div>)}
     </div>
   )
+}
+
+function useCounter() {
+  const [count, setCount] = React.useState(1)
+
+  React.useEffect(
+    () => {
+      const i = setInterval(() => setCount(x => x + 1), 1000)
+      return () => clearInterval(i)
+    },
+    []
+  )
+
+  return count
 }
 
 function NotFound({ params: { '*': path } }) {
