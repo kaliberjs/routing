@@ -126,6 +126,28 @@ export function usePick() {
   )
 }
 
+export function useIsCurrent(route, params = {}) {
+  const locationMatch = useLocationMatch()
+  if (!locationMatch) return false
+
+  const { params: currentParams, route: currentRoute } = locationMatch
+
+  return (currentRoute === route) && shallowEqual(currentParams, params || {})
+}
+
+export function useIsPartiallyCurrent(route, params = {}) {
+  const pick = usePick()
+  const locationMatch = useLocationMatch()
+  if (!locationMatch) return false
+
+  const { params: currentParams } = locationMatch
+  const paramsToMatch = Object.fromEntries(
+    Object.keys(params).map(k => [k, currentParams[k]])
+  )
+
+  return Boolean(pick(route)) && shallowEqual(paramsToMatch, params)
+}
+
 export function LocationProvider({
   basePath = '',
   initialLocation = undefined,
