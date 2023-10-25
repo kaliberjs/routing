@@ -81,22 +81,6 @@ export function useRootContext() {
   return context
 }
 
-/** @deprecated Please import routeMap and use the route map directly */
-export function useRoutes() {
-  const { routeMap } = useRootContext()
-  const currentRoute = useMatchedRoute()
-  const locationMatch = useLocationMatch()
-
-  const hasChildren = currentRoute && Object.keys(currentRoute[routeSymbol].children).length
-  const parent = currentRoute && currentRoute[routeSymbol].parent
-
-  return (
-    hasChildren ? currentRoute :
-    parent && locationMatch ? partiallyApplyReverseRoutes(parent, locationMatch.params) :
-    routeMap
-  )
-}
-
 export function useMatchedRoute() {
   const currentRoute = React.useContext(routeContext)
   const locationMatch = useLocationMatch()
@@ -108,11 +92,6 @@ export function useMatchedRoute() {
 export function useMatchedRouteData() {
   const currentRoute = useMatchedRoute()
   return currentRoute && currentRoute.data
-}
-
-/** @deprecated Import the routeMap, it provides type safety */
-export function useRouteMap() {
-  return useRootContext().routeMap
 }
 
 export function useHistory() {
