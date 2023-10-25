@@ -60,7 +60,8 @@ function interpolate(routePath, params) {
 function pickFromChildren(pathSegments, children, previousParams = {}) {
   const preparedChildren = children
     .map(route => {
-      const path = normalizePath(route.path, previousParams.language)
+      const { languageParamName = 'language' } = route[routeSymbol].config
+      const path = normalizePath(route.path, previousParams[languageParamName])
       if (path === null) return null
 
       return { route, routeSegments: path.split('/') }
@@ -163,12 +164,13 @@ function createRoute(config, name, path, data, children, getParent) {
       get parent() { return getParent() },
       children,
       name,
+      config,
     },
   })
 }
 
 function withReverseRoute(config, route) {
-  const { trailingSlash = false } = config
+  const { trailingSlash = false, languageParamName = 'language' } = config
   return Object.assign(reverseRoute, route)
 
   function reverseRoute(params = {}) {
@@ -176,7 +178,7 @@ function withReverseRoute(config, route) {
 
     const resolvedPath = [...parentPaths, route.path].reduce(
       (base, path) => {
-        const { language } = params
+        const { [languageParamName]: language } = params
         const normalizedPath = normalizePath(path, language)
         if (normalizedPath === null) throwError(`Could not determine path from ${JSON.stringify(path)} with language ${language}`)
         return resolve(normalizedPath, base, params)
