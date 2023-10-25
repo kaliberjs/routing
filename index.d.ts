@@ -2,5 +2,5 @@ export { asRouteMap, pick, pickRoute, asRouteChain, routeSymbol } from './src/ro
 export {
   useNavigate, useMatchedRoute, useMatchedRouteData, usePick, useRouting, useLocationMatch,
   useLocation, useHistory,
-  Link, LocationProvider,
+  Link, LocationProvider, StaticLocationProvider,
 } from './src/routing'
