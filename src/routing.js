@@ -121,16 +121,10 @@ export function StaticLocationProvider({ location, children }) {
   if (!location) throw new Error(`Your need to supply a location for the static location provider`)
   const locationLive = React.useContext(locationContext)
 
-  const navigateStatic = React.useCallback(
-    () => { throw new Error('You can not navigate in a static location provider') },
-    []
-  )
   const navigateLive = React.useContext(navigateContext)
+  const navigate = location === locationLive ? navigateLive : navigateStatic
 
-  return <navigateContext.Provider
-    value={location === locationLive ? navigateLive : navigateStatic}
-    children={<LocationAndMatchContextProvider {...{ location, children }} />}
-  />
+  return <Providers {...{ navigate, location, children }} />
 }
 
 export function Link({
@@ -165,8 +159,7 @@ export function Link({
   }
 }
 
-function HistoryBasedLocationProvider({ children }) {
-  const history = getHistory()
+function useHistoryLocation(history) {
   const [location, setLocation] = React.useState(() => history.location)
 
   React.useLayoutEffect(
@@ -178,39 +171,29 @@ function HistoryBasedLocationProvider({ children }) {
     [history]
   )
 
-  return <LocationAndMatchContextProvider {...{ location, children }} />
+  return location
 }
 
 function BrowserLocationProvider({ children, basePath }) {
   const history = getHistory()
+  const location = useHistoryLocation(history)
 
   const navigate = React.useCallback((to, ...rest) =>
     history.navigate(typeof to === 'string' ? resolve(basePath, to) : to, ...rest),
     [history, basePath]
   )
 
-  return <navigateContext.Provider
-    value={navigate}
-    children={<HistoryBasedLocationProvider {...{ children }} />}
-  />
+  return <Providers {...{ navigate, location, children }} />
 }
 
 function ServerLocationProvider({ initialLocation: location, children }) {
   if (!location) throw new Error(`Your need to supply an initial location on server side rendering`)
 
-  const navigate = React.useCallback(
-    () => { throw new Error('You can not navigate on the server') },
-    []
-  )
-
-  return <navigateContext.Provider
-    value={navigate}
-    children={<LocationAndMatchContextProvider {...{ location, children }} />}
-  />
+  const navigate = navigateServer
+  return <Providers {...{ navigate, location, children }} />
 }
 
-function MatchContextProvider({ children }) {
-  const location = useLocation()
+function MatchContextProvider({ location, children }) {
   const { routeMap, basePath } = useRootContext()
 
   const match = React.useMemo(
@@ -224,12 +207,13 @@ function MatchContextProvider({ children }) {
   return <matchContext.Provider value={match} {...{ children }} />
 }
 
-function LocationAndMatchContextProvider({ location, children }) {
+function Providers({ navigate, location, children }) {
   return (
-    <locationContext.Provider
-        value={location}
-        children={<MatchContextProvider {...{ children }} />}
-      />
+    <navigateContext.Provider value={navigate} children={
+      <locationContext.Provider value={location} children={
+        <MatchContextProvider {...{ location, children }} />
+      } />
+    } />
   )
 }
 
@@ -262,6 +246,14 @@ function shouldNavigate(e) {
     e.button === 0 &&
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
+}
+
+function navigateStatic() {
+  throw new Error('You can not navigate in a static location provider')
+}
+
+function navigateServer() {
+  throw new Error('You can not navigate on the server')
 }
 
 /**
