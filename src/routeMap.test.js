@@ -115,6 +115,27 @@ describe('asRouteMap', () => {
         expect(map.language.a({ language: 'en' })).toBe('/en/b')
         expect(pick('nl/b', [map, (_, x) => x])).toBe(null)
       })
+      test('language - custom language param name', () => {
+        const map = asRouteMap(
+          {
+            language: {
+              path: ':locale',
+
+              a: { path: { nl: 'a', en: 'b' } } },
+          },
+          {
+            languageParamName: 'locale'
+          }
+        )
+
+        expect(pick('nl/a', [map, (_, x) => x])).toBe(map.language.a)
+        expect(map.language.a({ locale: 'nl' })).toBe('/nl/a')
+        expect(pick('en/a', [map, (_, x) => x])).toBe(null)
+
+        expect(pick('en/b', [map, (_, x) => x])).toBe(map.language.a)
+        expect(map.language.a({ locale: 'en' })).toBe('/en/b')
+        expect(pick('nl/b', [map, (_, x) => x])).toBe(null)
+      })
     })
     describe('reverse routing', () => {
       test('path static', () => {
