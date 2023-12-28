@@ -4,6 +4,7 @@
   },
   "include": ["./src/**/*", "./types/**/*"],
   "compilerOptions": {
+    "preserveSymlinks": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,

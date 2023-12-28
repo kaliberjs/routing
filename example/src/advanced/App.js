@@ -1,4 +1,12 @@
-import { useNavigate, useMatchedRouteData, usePick, useRouting, useLocationMatch, Link, LocationProvider } from '@kaliber/routing'
+import {
+  useNavigate,
+  useMatchedRouteData,
+  usePick,
+  useRouting,
+  useLocationMatch,
+  Link,
+  LocationProvider,
+} from '@kaliber/routing'
 import { RouteDataProvider, useAsyncRouteData } from './machinery/RouteData'
 import { routeMap } from './routeMap'
 import { useLanguage, LanguageContext } from './machinery/Language'
@@ -33,7 +41,7 @@ function Page() {
 
 function Language({ children, language }) {
   const navigate = useNavigate()
-  const { route } = useLocationMatch()
+  const { params, route } = useLocationMatch()
   return (
     <div>
       <label htmlFor='nl'>NL</label>
@@ -55,7 +63,7 @@ function Language({ children, language }) {
   )
 
   function setLanguage(language) {
-    navigate(route({ language }))
+    navigate(route({ ...params, language }))
   }
 }
 
@@ -117,9 +125,9 @@ function Article({ params: { articleId } }) {
       <h1>{article.title} ({article.id})</h1>
       {atValidTab && (
         <div>
-          <Link to={routes.main({ articleId, language })}>Main</Link>
-          <Link to={routes.tab1({ articleId, language })}>Tab1</Link>
-          <Link to={routes.tab2({ articleId, language })}>Tab2</Link>
+          <Tab label='Main' route={routes.main} />
+          <Tab label='Tab1' route={routes.tab1} />
+          <Tab label='Tab2' route={routes.tab2} />
         </div>
       )}
       <div>
@@ -132,6 +140,18 @@ function Article({ params: { articleId } }) {
       </div>
       {matchRoute(routes.tab1, <Sidebar {...{ article }} />)}
     </div>
+  )
+}
+
+function Tab({ label, route }) {
+  const { params, route: currentRoute } = useLocationMatch()
+  const isActive = route === currentRoute
+  return (
+    <>
+      {isActive && '>> '}
+      <Link to={route(params)}>{label}</Link>
+      {isActive && ' <<'}
+    </>
   )
 }
 

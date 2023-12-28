@@ -1,6 +1,6 @@
 
 import { getHistory } from './history'
-import { callOrReturn, mapValues } from './utils'
+import { callOrReturn } from './utils'
 import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
@@ -26,8 +26,6 @@ const routeContext = React.createContext(null)
 
 const inBrowser = typeof window !== 'undefined'
 
-const wrappedRouteSymbol = Symbol('wrappedRouteSymbol')
-
 /**
   @template {JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
@@ -50,7 +48,7 @@ export function useRouting() {
 
     const { route, params } = result
     const children = callOrReturn(routeLookup.get(route), params)
-    return <routeContext.Provider value={route[wrappedRouteSymbol] || route} {...{ children }} />
+    return <routeContext.Provider value={route} {...{ children }} />
   }
 }
 
@@ -66,7 +64,7 @@ export function useLocationMatch() {
   if (!context.locationMatch) return null
 
   const { params, route } = context.locationMatch
-  return { params, route: partiallyApplyReverseRoutes(route, params) }
+  return { params, route }
 }
 
 export function useNavigate() {
@@ -81,38 +79,16 @@ export function useRootContext() {
   return context
 }
 
-/** @deprecated Please import routeMap and use the route map directly */
-export function useRoutes() {
-  const { routeMap } = useRootContext()
-  const currentRoute = useMatchedRoute()
-  const locationMatch = useLocationMatch()
-
-  const hasChildren = currentRoute && Object.keys(currentRoute[routeSymbol].children).length
-  const parent = currentRoute && currentRoute[routeSymbol].parent
-
-  return (
-    hasChildren ? currentRoute :
-    parent && locationMatch ? partiallyApplyReverseRoutes(parent, locationMatch.params) :
-    routeMap
-  )
-}
-
 export function useMatchedRoute() {
   const currentRoute = React.useContext(routeContext)
-  const locationMatch = useLocationMatch()
-  if (!currentRoute || !locationMatch) return null
+  if (!currentRoute) return null
 
-  return partiallyApplyReverseRoutes(currentRoute, locationMatch.params)
+  return currentRoute
 }
 
 export function useMatchedRouteData() {
   const currentRoute = useMatchedRoute()
   return currentRoute && currentRoute.data
-}
-
-/** @deprecated Import the routeMap, it provides type safety */
-export function useRouteMap() {
-  return useRootContext().routeMap
 }
 
 export function useHistory() {
@@ -132,13 +108,12 @@ export function usePick() {
       const availableRoutes = new Map(
         routes.map((route, i) => {
           if (!route) throw new Error(`Route missing at index ${i}`)
-          return [route[wrappedRouteSymbol] || route, route]
+          return [route, route]
         })
       )
       return selectRoute(route, params)
 
-      function selectRoute(possiblyWrappedRoute, params) {
-        const route = possiblyWrappedRoute[wrappedRouteSymbol] || possiblyWrappedRoute
+      function selectRoute(route, params) {
         const { parent } = route[routeSymbol]
         return (
           availableRoutes.has(route) ? { params, route: availableRoutes.get(route) } :
@@ -275,33 +250,6 @@ function RootContextProvider({ children, routeMap, basePath }) {
 
 function resolve(basePath, to) {
   return `${basePath}${to}`
-}
-
-/* TODO we now apply all available params, in some cases we are higher up
-   in the route tree. Should we only supply the params up to that point?
-
-   If we are in a component that renders /en/articles while viewing
-   /en/articles/article1. Should the route to lang.articles.article()
-   have prefilled { lang: 'en' } or { lang: 'en', aricleId: 'article1' }?
-*/
-// TODO: See if you can type this:
-/**
- * @param {Route} route
- * @returns {Route}
- */
-function partiallyApplyReverseRoutes(route, availableParams) {
-  if (route[wrappedRouteSymbol]) throw new Error('Can not partially apply a partially applied route')
-
-  return Object.assign(
-    partiallyAppliedReverseRoute,
-    route,
-    mapValues(route[routeSymbol].children, x => partiallyApplyReverseRoutes(x, availableParams)),
-    { [wrappedRouteSymbol]: route }
-  )
-
-  function partiallyAppliedReverseRoute(params) {
-    return route({ ...availableParams, ...params })
-  }
 }
 
 function shallowEqual(o1, o2) {
