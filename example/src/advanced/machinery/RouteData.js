@@ -2,7 +2,7 @@
  * Warning: do not use this code in production.
  */
 
-import { useMatchedRoute, useLocationMatch, asRouteChain } from '@kaliber/routing'
+import { useLocationMatch, asRouteChain } from '@kaliber/routing'
 
 const routeDataContext = React.createContext(null)
 
@@ -30,19 +30,17 @@ export function RouteDataProvider({ children, initialData }) {
   return <routeDataContext.Provider value={data} {...{ children }} />
 }
 
-export function useAsyncRouteData(defaultValue, { route: requestedRoute = undefined, extraArgs = undefined } = {}) {
+export function useAsyncRouteData({ initialValue, route, extraArgs = undefined }) {
   const initialRouteData = React.useContext(routeDataContext)
   if (!initialRouteData) throw new Error('Please use a RouteDataProvider')
-  const currentRoute = useMatchedRoute()
-  const route = requestedRoute || currentRoute
   const { params } = useLocationMatch()
   const routeId = route(params)
 
   if (typeof route.data !== 'function') throw new Error(`Route ${route} (${routeId}) does not have a function as data`)
 
-  const [state, setState] = React.useState(() => initialRouteData[routeId] || defaultValue)
+  const [state, setState] = React.useState(() => initialRouteData[routeId] || initialValue)
 
-  const dataForRef = React.useRef(state === defaultValue ? null : routeId)
+  const dataForRef = React.useRef(state === initialValue ? null : routeId)
 
   const getData = route.data
   const props = { ...params, ...extraArgs }

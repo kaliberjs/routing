@@ -1,6 +1,5 @@
 import {
   useNavigate,
-  useMatchedRouteData,
   usePick,
   useRouting,
   useLocationMatch,
@@ -82,7 +81,7 @@ function Navigation() {
 function Home() {
   const routes = routeMap.app
   const language = useLanguage()
-  const { title } = useMatchedRouteData()
+  const { title } = routes.home.data
 
   return (
     <div>
@@ -95,8 +94,8 @@ function Home() {
 function Articles() {
   const language = useLanguage()
   const routes = routeMap.app.articles
-  const { title } = useMatchedRouteData()
-  const { articles } = useAsyncRouteData({ articles: [] }, { route: routes.list })
+  const { title } = routeMap.app.home.data
+  const { articles } = useAsyncRouteData({ initialValue: { articles: [] }, route: routes.list })
   return (
     <div>
       {title[language]}
@@ -113,32 +112,31 @@ function Articles() {
 
 function Article({ params: { articleId } }) {
   const { matchRoutes, matchRoute } = useRouting()
-  const routes = routeMap.app.articles.article
+  const articleRoute = routeMap.app.articles.article
   const pick = usePick()
-  const { article } = useAsyncRouteData({ article: {} })
-  const language = useLanguage()
+  const { article } = useAsyncRouteData({ initialValue: { article: {} }, route: articleRoute })
 
-  const atValidTab = Boolean(pick(routes.main, routes.tab1, routes.tab2))
+  const atValidTab = Boolean(pick(articleRoute.main, articleRoute.tab1, articleRoute.tab2))
 
   return (
     <div>
       <h1>{article.title} ({article.id})</h1>
       {atValidTab && (
         <div>
-          <Tab label='Main' route={routes.main} />
-          <Tab label='Tab1' route={routes.tab1} />
-          <Tab label='Tab2' route={routes.tab2} />
+          <Tab label='Main' route={articleRoute.main} />
+          <Tab label='Tab1' route={articleRoute.tab1} />
+          <Tab label='Tab2' route={articleRoute.tab2} />
         </div>
       )}
       <div>
         {matchRoutes(
-          [routes.main, 'Main content'],
-          [routes.tab1, 'Tab 1'],
-          [routes.tab2, 'Tab 2'],
-          [routes.notFound, 'Not found']
+          [articleRoute.main, 'Main content'],
+          [articleRoute.tab1, 'Tab 1'],
+          [articleRoute.tab2, 'Tab 2'],
+          [articleRoute.notFound, 'Not found']
         )}
       </div>
-      {matchRoute(routes.tab1, <Sidebar {...{ article }} />)}
+      {matchRoute(articleRoute.tab1, <Sidebar {...{ article }} route={articleRoute.tab1} />)}
     </div>
   )
 }
@@ -155,8 +153,8 @@ function Tab({ label, route }) {
   )
 }
 
-function Sidebar({ article }) {
-  const { price } = useAsyncRouteData({ price: 0 }, { extraArgs: { article } })
+function Sidebar({ article, route }) {
+  const { price } = useAsyncRouteData({ initialValue: { price: 0 }, route, extraArgs: { article } })
   return <div>Side bar for tab 1, price: {price}</div>
 }
 
