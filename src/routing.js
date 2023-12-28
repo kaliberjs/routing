@@ -84,18 +84,13 @@ export function usePick() {
       if (!locationMatch) return null
 
       const { params, route } = locationMatch
-      const availableRoutes = new Map(
-        routes.map((route, i) => {
-          if (!route) throw new Error(`Route missing at index ${i}`)
-          return [route, route]
-        })
-      )
+
       return selectRoute(route, params)
 
       function selectRoute(route, params) {
         const { parent } = route[routeSymbol]
         return (
-          availableRoutes.has(route) ? { params, route: availableRoutes.get(route) } :
+          routes.includes(route) ? { params, route } :
           parent ? selectRoute(parent, params) :
           null
         )
