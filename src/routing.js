@@ -85,16 +85,10 @@ export function usePick() {
 
       const { params, route } = locationMatch
 
-      return selectRoute(route, params)
+      const pickedRoute = pickRoute(routes, route)
+      if (!pickedRoute) return null
 
-      function selectRoute(route, params) {
-        const { parent } = route[routeSymbol]
-        return (
-          routes.includes(route) ? { params, route } :
-          parent ? selectRoute(parent, params) :
-          null
-        )
-      }
+      return { route: pickedRoute, params }
     },
     [locationMatch]
   )
@@ -249,6 +243,15 @@ function navigateStatic() {
 
 function navigateServer() {
   throw new Error('You can not navigate on the server')
+}
+
+function pickRoute(routes, route) {
+  if (routes.includes(route)) return route
+
+  const { parent } = route[routeSymbol]
+  if (parent) return pickRoute(routes, parent)
+
+  return null
 }
 
 /**
