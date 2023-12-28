@@ -160,7 +160,16 @@ route1: {
 }
 ```
 
-The name of a parent routes' path param should be set to `language` in order for this pattern to work.
+The name of a parent routes' path param should be set to `language` in order for this pattern to work. If you want to use a different name you need to provide this as configuration to the route map:
+
+```js
+asRouteMap(
+  {
+    ...
+  },
+  { languageParamName: 'locale' }
+)
+```
 
 ---
 ### Reverse route

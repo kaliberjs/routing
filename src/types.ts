@@ -60,4 +60,5 @@ type LanguageSupport = { language?: string }
 
 export type Config = {
   trailingSlash?: boolean
+  languageParamName?: string
 }
