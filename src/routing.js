@@ -188,7 +188,7 @@ function MatchContextProvider({ location, children }) {
   const match = React.useMemo(
     () => {
       const normalizedPathname = location.pathname.replace(basePath, '')
-      return selectRoute(normalizedPathname, routeMap)
+      return pickRoute(normalizedPathname, routeMap)
     },
     [location.pathname, routeMap, basePath]
   )
