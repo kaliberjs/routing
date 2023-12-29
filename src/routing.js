@@ -85,10 +85,10 @@ export function usePick() {
 
       const { params, route } = locationMatch
 
-      const pickedRoute = pickRoute(routes, route)
-      if (!pickedRoute) return null
+      const selectedRoute = selectRoute(routes, route)
+      if (!selectedRoute) return null
 
-      return { route: pickedRoute, params }
+      return { route: selectedRoute, params }
     },
     [locationMatch]
   )
@@ -188,7 +188,7 @@ function MatchContextProvider({ location, children }) {
   const match = React.useMemo(
     () => {
       const normalizedPathname = location.pathname.replace(basePath, '')
-      return pickRoute(normalizedPathname, routeMap)
+      return selectRoute(normalizedPathname, routeMap)
     },
     [location.pathname, routeMap, basePath]
   )
@@ -245,11 +245,11 @@ function navigateServer() {
   throw new Error('You can not navigate on the server')
 }
 
-function pickRoute(routes, route) {
+function selectRoute(routes, route) {
   if (routes.includes(route)) return route
 
   const { parent } = route[routeSymbol]
-  if (parent) return pickRoute(routes, parent)
+  if (parent) return selectRoute(routes, parent)
 
   return null
 }
