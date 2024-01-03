@@ -1,4 +1,4 @@
-import { usePick, useRouting, Link, LocationProvider, useLocation, StaticLocationProvider } from '@kaliber/routing'
+import { usePick, useRouting, Link, LocationProvider, useLocation, StaticLocationProvider, useIsCurrent, useIsPartiallyCurrent  } from '@kaliber/routing'
 import { routeMap } from './routeMap'
 import { animated, useTransition } from 'react-spring'
 import styles from './App.css'
@@ -53,10 +53,29 @@ function Navigation() {
   const routes = routeMap
   return (
     <div>
-      <Link to={routes.home()}>Home</Link>
-      <Link to={routes.articles()}>Articles</Link>
-      <Link to={routes.articles.article({ id: 'article1' })}>Featured article</Link>
+      <NavigationLink label='Home' route={routes.home} />
+      <NavigationLink label='Articles' route={routes.articles} />
+      <NavigationLink
+        label='Featured article'
+        route={routes.articles.article.main}
+        params={{ id: 'article1' }}
+      />
     </div>
+  )
+}
+
+function NavigationLink({ label, route, params = undefined }) {
+  const isCurrent = useIsCurrent(route, params)
+  const isPartiallyCurrent = useIsPartiallyCurrent(route, params)
+  return (
+    <>
+      {
+        isCurrent ? '>' :
+        isPartiallyCurrent ? '|' :
+        ''
+      }
+      <Link to={route(params)}>{label}</Link>
+    </>
   )
 }
 

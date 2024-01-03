@@ -214,6 +214,8 @@ There are a few methods used for matching routes, some are used on the client, o
   - `useMatchedRoute`
   - `useLocationMatch`
   - `usePick` (with `pick`)
+  - `useIsCurrent`
+  - `useIsPartiallyCurrent`
 
 ---
 ### `pickRoute`
@@ -282,6 +284,35 @@ function usePick(): (...routes: Array<Route>) => Route
 ```
 
 Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the picked route (`useLocationMatch`).
+
+---
+### `useIsCurrent`
+
+```js
+function useIsCurrent(route, params = {}): boolean
+```
+
+Returns a boolean indicating whether the route and params match the route and params of the current location. Note that if you don't want to match the params you can use the following:
+
+```js
+const { route: currentRoute } = useLocationMatch()
+const isCurrent = route === currentRoute
+```
+
+---
+### `useIsPartiallyCurrent`
+
+```js
+function useIsPartiallyCurrent(route, params = {}): boolean
+```
+
+Similar to `useIsCurrent`, this however will also match on the parents. Note that if you don't want
+to match the params you can use the following:
+
+```js
+const pick = usePick()
+const isPartiallyCurrent = Boolean(pick(route))
+```
 
 ---
 ---
