@@ -4,19 +4,16 @@ import { callOrReturn } from './utils'
 import { pickRoute, routeSymbol } from './routeMap'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
+/** @type {React.Context<null | { params: object, route: Route }>}*/
+const matchContext = React.createContext(null)
 /**
-  @typedef {{ pathname: string, search: string, hash: string, state?: object, key: string }} Location
   @type {
     React.Context<
-      {
-        location: Location,
-        locationMatch: null | { params: object, route: Route },
-      } |
-      undefined
+      { pathname: string, search: string, hash: string, state?: object, key: string } | undefined
     >
   }
 */
-const locationAndLocationMatchContext = React.createContext(undefined)
+const locationContext = React.createContext(undefined)
 /** @type {React.Context<((to: number | string, x?: { state?: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
 /** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
@@ -53,18 +50,15 @@ export function useRouting() {
 }
 
 export function useLocation() {
-  const context = React.useContext(locationAndLocationMatchContext)
-  if (!context) throw new Error('Please use a `LocationProvider` to supply a location')
-  return context.location
+  const location = React.useContext(locationContext)
+  if (!location) throw new Error('Please use a `LocationProvider` to supply a location')
+  return location
 }
 
 export function useLocationMatch() {
-  const context = React.useContext(locationAndLocationMatchContext)
-  if (!context) throw new Error('Please use a `LocationProvider` to supply a location')
-  if (!context.locationMatch) return null
-
-  const { params, route } = context.locationMatch
-  return { params, route }
+  const match = React.useContext(matchContext)
+  if (!match) return null
+  return match
 }
 
 export function useNavigate() {
@@ -140,7 +134,7 @@ export function LocationProvider({
 
 export function StaticLocationProvider({ location, children }) {
   if (!location) throw new Error(`Your need to supply a location for the static location provider`)
-  const { location: locationLive } = React.useContext(locationAndLocationMatchContext)
+  const locationLive = React.useContext(locationContext)
 
   const navigateStatic = React.useCallback(
     () => { throw new Error('You can not navigate in a static location provider') },
@@ -150,7 +144,7 @@ export function StaticLocationProvider({ location, children }) {
 
   return <navigateContext.Provider
     value={location === locationLive ? navigateLive : navigateStatic}
-    children={<LocationAndLocationMatchContext {...{ location, children} } />}
+    children={<LocationAndMatchContextProvider {...{ location, children }} />}
   />
 }
 
@@ -186,7 +180,7 @@ export function Link({
   }
 }
 
-function BrowserLocationProvider({ children, basePath }) {
+function HistoryBasedLocationProvider({ children }) {
   const history = getHistory()
   const [location, setLocation] = React.useState(() => history.location)
 
@@ -199,6 +193,12 @@ function BrowserLocationProvider({ children, basePath }) {
     [history]
   )
 
+  return <LocationAndMatchContextProvider {...{ location, children }} />
+}
+
+function BrowserLocationProvider({ children, basePath }) {
+  const history = getHistory()
+
   const navigate = React.useCallback((to, ...rest) =>
     history.navigate(typeof to === 'string' ? resolve(basePath, to) : to, ...rest),
     [history, basePath]
@@ -206,7 +206,7 @@ function BrowserLocationProvider({ children, basePath }) {
 
   return <navigateContext.Provider
     value={navigate}
-    children={<LocationAndLocationMatchContext {...{ location, children} } />}
+    children={<HistoryBasedLocationProvider {...{ children }} />}
   />
 }
 
@@ -220,21 +220,32 @@ function ServerLocationProvider({ initialLocation: location, children }) {
 
   return <navigateContext.Provider
     value={navigate}
-    children={<LocationAndLocationMatchContext {...{ location, children} } />}
+    children={<LocationAndMatchContextProvider {...{ location, children }} />}
   />
 }
 
-/** @param {{ location: Location, children: any }} location */
-function LocationAndLocationMatchContext({ location, children }) {
+function MatchContextProvider({ children }) {
+  const location = useLocation()
   const { routeMap, basePath } = useRootContext()
-  const value = React.useMemo(
+
+  const match = React.useMemo(
     () => {
       const normalizedPathname = location.pathname.replace(basePath, '')
-      return { location, locationMatch: pickRoute(normalizedPathname, routeMap) }
+      return pickRoute(normalizedPathname, routeMap)
     },
-    [location, routeMap, basePath]
+    [location.pathname, routeMap, basePath]
   )
-  return <locationAndLocationMatchContext.Provider {...{ value, children }} />
+
+  return <matchContext.Provider value={match} {...{ children }} />
+}
+
+function LocationAndMatchContextProvider({ location, children }) {
+  return (
+    <locationContext.Provider
+        value={location}
+        children={<MatchContextProvider {...{ children }} />}
+      />
+  )
 }
 
 function RootContextProvider({ children, routeMap, basePath }) {
