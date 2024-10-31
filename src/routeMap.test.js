@@ -5,14 +5,14 @@ const { objectContaining } = expect
 describe('asRouteMap', () => {
 
   test('routeMapSymbol', () => {
-    expect(asRouteMap({})[routeMapSymbol]).toStrictEqual({ children: {} })
+    expect(asRouteMap({})[routeMapSymbol]).toStrictEqual({ children: [], config: {} })
   })
 
   test('routeMapSymbol children', () => {
     const { children } = asRouteMap({ x: 'y' })[routeMapSymbol]
 
-    expect(children.x).toBeDefined()
-    expect(children.x.path).toBe('y')
+    expect(children[0]).toBeDefined()
+    expect(children[0].path).toBe('y')
   })
 
   describe('string route conversion', () => {
