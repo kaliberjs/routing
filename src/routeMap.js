@@ -163,9 +163,9 @@ function createStaticMatcher(routeSegment) {
 
 function determineScore(path) {
   if (typeof path === 'string')
-    return calculateScore(path.split('/'))
+    return calculateScore(path)
 
-  const scores = new Set(Object.values(path).map(determineScore))
+  const scores = new Set(Object.values(path).map(calculateScore))
   if (scores.size > 1)
     throw new Error(
       `Paths in localized path object have different scores:\n` +
@@ -176,7 +176,8 @@ function determineScore(path) {
   return score
 }
 
-function calculateScore(routeSegments) {
+function calculateScore(path) {
+  const routeSegments = path.split('/')
   return routeSegments.reduce(
     (previousScore, segment, i) => {
       const score =
