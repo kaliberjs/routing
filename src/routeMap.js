@@ -16,6 +16,8 @@ export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
 export function asRouteMap(map, config = {}) {
+  config.localeParamName = config.languageParamName || 'language'
+  config.trailingSlash = config.trailingSlash || false
   const children = normalizeChildren(config, map)
   return {
     ...children,
@@ -38,8 +40,7 @@ export function pickRoute(pathname, routeMap) {
 
   const pathSegments = pathname.split('/').filter(Boolean)
   const { children, config } = routeMap[routeMapSymbol]
-  const localeParamName = config.languageParamName || 'language'
-  const result = pickFromChildren(pathSegments, children, localeParamName)
+  const result = pickFromChildren(pathSegments, children)
   return result ? result : null
 }
 
@@ -48,23 +49,11 @@ export function asRouteChain(route) {
   return asRouteChain(route[routeSymbol].parent).concat(route)
 }
 
-function interpolate(routePath, params) {
-  return routePath
-    .replace(/:([^/]+)/g, (_, paramName) => {
-      const newValue = params[paramName]
-      if (!newValue) throw new Error(`Could not find value for '${paramName}'`)
-      return newValue
-    })
-    .replace(/(\*)/, () => params['*'] || '')
-}
-
-function pickFromChildren(pathSegments, children, localeParamName, previousParams = {}) {
-  const locale = previousParams[localeParamName]
-
+function pickFromChildren(pathSegments, children, previousParams = {}) {
   for (const route of children) {
     const { match, children } = route[routeSymbol]
 
-    const info = match(pathSegments, locale)
+    const info = match(pathSegments, previousParams)
     if (!info)
       continue
 
@@ -79,7 +68,7 @@ function pickFromChildren(pathSegments, children, localeParamName, previousParam
 
     const combinedParams = { ...previousParams, ...params }
     const resultFromChildren = pickFromChildren(
-      remainingSegments, children, localeParamName, combinedParams
+      remainingSegments, children, combinedParams
     )
     if (resultFromChildren)
       return resultFromChildren
@@ -89,87 +78,121 @@ function pickFromChildren(pathSegments, children, localeParamName, previousParam
   }
 }
 
-
-function determineRouteMatcher(routePath) {
+function determinePathInfo(routePath, config) {
   return typeof routePath === 'string'
-    ? createPathMatcher(routePath)
-    : createLocalizedPathMatcher(routePath)
+    ? createPathInfo(routePath)
+    : createLocalizedPathInfo(routePath, config)
 }
 
-function createPathMatcher(routePath) {
+function createPathInfo(routePath) {
   const routeSegments = routePath.split('/').filter(Boolean)
-  const segmentMatchers = routeSegments.map(createSegmentMatcher)
+  const segmentFunctions = routeSegments.map(createSegmentFunctions)
 
-  return (pathSegments, locale) => {
-    const params = {}
-    let remainingSegments = pathSegments
+  return {
+    path(params) {
+      let path = ''
+      for (const segmentFunction of segmentFunctions) {
+        path = `${path}/${segmentFunction.path(params)}`
+      }
+      return path
+    },
 
-    for (const matcher of segmentMatchers) {
-      const match = matcher(remainingSegments)
-      if (!match)
-        return
+    match(pathSegments) {
+      const params = {}
+      let remainingSegments = pathSegments
 
-      Object.assign(params, match.params)
-      remainingSegments = match.remainingSegments
-    }
+      for (const segmentFunction of segmentFunctions) {
+        const match = segmentFunction.match(remainingSegments)
+        if (!match)
+          return
 
-    return { params, remainingSegments }
+        Object.assign(params, match.params)
+        remainingSegments = match.remainingSegments
+      }
+
+      return { params, remainingSegments }
+    },
+
+    score: calculateScore(routePath),
   }
 }
 
-function createLocalizedPathMatcher(routePaths) {
-  const matchers = mapValues(routePaths, createPathMatcher)
-
-  return (pathSegments, locale) => {
-    if (!locale)
-      return
-
-    const matcher = matchers[locale]
-    if (!matcher)
-      return
-
-    return matcher(pathSegments, locale)
-  }
-}
-
-function createSegmentMatcher(routeSegment) {
+function createSegmentFunctions(routeSegment) {
   return (
-    routeSegment.startsWith(':') ? createParamMatcher(routeSegment.slice(1)) :
-    routeSegment === '*' ? createWildcardMatcher() :
-    createStaticMatcher(routeSegment)
+    routeSegment.startsWith(':') ? createParamFunctions(routeSegment.slice(1)) :
+    routeSegment === '*' ? createWildcardFunctions() :
+    createStaticFunctions(routeSegment)
   )
 }
 
-function createParamMatcher(paramName) {
-  return ([segment, ...remainingSegments]) => segment && {
-    params: { [paramName]: segment },
-    remainingSegments,
+function createParamFunctions(paramName) {
+  return {
+    path: params => params[paramName],
+    match: ([segment, ...remainingSegments]) => segment && {
+      params: { [paramName]: segment },
+      remainingSegments,
+    },
   }
 }
 
-function createWildcardMatcher() {
-  return remainingSegments => remainingSegments.length && {
-    params: { '*': remainingSegments.join('/') },
-    remainingSegments: []
+function createWildcardFunctions() {
+  return {
+    path: params => params['*'],
+    match: remainingSegments => remainingSegments.length && {
+      params: { '*': remainingSegments.join('/') },
+      remainingSegments: []
+    },
   }
 }
 
-function createStaticMatcher(routeSegment) {
-  return ([segment, ...remainingSegments]) => segment === routeSegment && {
-    params: null,
-    remainingSegments,
+function createStaticFunctions(routeSegment) {
+  return {
+    path: params => routeSegment,
+    match: ([segment, ...remainingSegments]) => segment === routeSegment && {
+      params: null,
+      remainingSegments,
+    }
   }
 }
 
-function determineScore(path) {
-  if (typeof path === 'string')
-    return calculateScore(path)
+function createLocalizedPathInfo(routePaths, config) {
+  const pathFunctions = mapValues(routePaths, createPathInfo)
 
-  const scores = new Set(Object.values(path).map(calculateScore))
+  return {
+    path(params) {
+      const locale = params[config.localeParamName]
+      if (!locale)
+        throw new Error(`Could not determine locale, '${config.localeParamName}' is missing in params:\n${params}`)
+
+      const pathFunction = pathFunctions[locale]
+      if (!pathFunction)
+        throw new Error(`Could not determine what path to use for locale '${locale}' in localized paths object:\n${routePaths}`)
+
+      return pathFunction.path(params)
+    },
+
+    match(pathSegments, params) {
+      const locale = params[config.localeParamName]
+      if (!locale)
+        return
+
+      const pathFunction = pathFunctions[locale]
+      if (!pathFunction)
+        return
+
+      return pathFunction.match(pathSegments)
+    },
+
+    score: determineScore(routePaths)
+  }
+}
+
+function determineScore(routePaths) {
+  const scores = new Set(Object.values(routePaths).map(calculateScore))
   if (scores.size > 1)
     throw new Error(
       `Paths in localized path object have different scores:\n` +
-      JSON.stringify(path, null, 2)
+      JSON.stringify(routePaths, null, 2)
     )
 
   const [score] = Array.from(scores)
@@ -178,17 +201,36 @@ function determineScore(path) {
 
 function calculateScore(path) {
   const routeSegments = path.split('/')
-  return routeSegments.reduce(
-    (previousScore, segment, i) => {
-      const score =
-        segment === '*' ? -2 :
-        segment.startsWith(':') ? 4 :
-        8
+  let totalScore = 0
 
-      return previousScore + (score / (i + 1))
-    },
-    0
-  )
+  for (const [i, segment] of routeSegments.entries()) {
+    const score =
+      segment === '*' ? -2 :
+      segment.startsWith(':') ? 4 :
+      8
+
+    totalScore += score / (i + 1)
+  }
+
+  return totalScore
+}
+
+function withReverseRoute(config, route) {
+  const pathEnd = config.trailingSlash ? '/' : ''
+  return Object.assign(reverseRoute, route)
+
+  function reverseRoute(params = {}) {
+    let resolvedPath = ''
+    let currentRoute = route
+
+    do {
+      const { path, parent } = currentRoute[routeSymbol]
+      resolvedPath = path(params) + resolvedPath
+      currentRoute = parent
+    } while (currentRoute)
+
+    return resolvedPath ? resolvedPath + pathEnd : '/'
+  }
 }
 
 function normalizeChildren(config, children, getParent = () => null, parentName = '') {
@@ -209,8 +251,7 @@ function normalize(config, routeInput, getParent, name) {
 
 function createRoute(config, name, path, data, children, getParent) {
 
-  const match = determineRouteMatcher(path)
-  const score = determineScore(path)
+  const info = determinePathInfo(path, config)
 
   return withReverseRoute(config, {
     ...children,
@@ -221,50 +262,13 @@ function createRoute(config, name, path, data, children, getParent) {
       get parent() { return getParent() },
       children: asSortedArray(children),
       name,
-      match,
-      score,
+      path: info.path,
+      match: info.match,
+      score: info.score,
     },
   })
 }
 
 function asSortedArray(children) {
   return Object.values(children).sort((a, b) => b[routeSymbol].score - a[routeSymbol].score)
-}
-
-function withReverseRoute(config, route) {
-  const { trailingSlash = false, languageParamName = 'language' } = config
-  return Object.assign(reverseRoute, route)
-
-  function reverseRoute(params = {}) {
-    const parentPaths = getParents(route).map(x => x.path)
-
-    const resolvedPath = [...parentPaths, route.path].reduce(
-      (base, path) => {
-        const { [languageParamName]: language } = params
-        const normalizedPath = normalizePath(path, language)
-        if (normalizedPath === null) throwError(`Could not determine path from ${JSON.stringify(path)} with language ${language}`)
-        return resolve(normalizedPath, base, params)
-      },
-      ''
-    )
-
-    return `${resolvedPath}${trailingSlash && !resolvedPath.endsWith('/') ? '/' : ''}`
-  }
-}
-
-function normalizePath(path, language) {
-  return (
-    typeof path === 'string' ? path :
-    language in path ? path[language] :
-    null
-  )
-}
-
-function resolve(path, base, params) {
-  const pathValue = interpolate(path, params)
-  return `${base}/${pathValue}`
-}
-
-function getParents({ [routeSymbol]: { parent } }) {
-  return !parent ? [] : getParents(parent).concat(parent)
 }
