@@ -3,19 +3,16 @@ export function callOrReturn(x, ...args) {
 }
 
 /**
- * @template {{ [k: string]: any }} A
- * @template {(v: A[keyof A & string], k: keyof A & string, x: A) => any} B
+ * @template {{ [key: string | number | symbol]: any }} O
+ * @template {(v: O[keyof O], k: keyof O, o: O) => any} F
  *
- * @param {A} x
- * @param {B} f
- *
- * @returns {{ [P in keyof x]: ReturnType<B> }}
+ * @param {O} o
+ * @param {F} f
+ * @returns {{ [key in keyof O]: ReturnType<F> }}
  */
-export function mapValues(x, f) {
+export function mapValues(o, f) {
   // @ts-ignore
-  return Object.entries(x)
-    // eslint-disable-next-line no-return-assign
-    .reduce((result, [k, v]) => (result[k] = f(v, k, x), result), {})
+  return Object.fromEntries(
+    Object.entries(o).map(([k, v]) => [k, f(v, k, o)])
+  )
 }
-
-export function throwError(e) { throw new Error(e) }

@@ -1,64 +1,81 @@
-import type { routeSymbol, routeMapSymbol } from './routeMap'
+import { Expand } from './machinery/typescript-utils'
+import type { routeSymbol, routeMapSymbol } from './routeMap.js'
 
-export type RouteMap = { [route: string]: Route, [routeMapSymbol]: { children: RouteChildren } }
-export type Route = ReverseRoute & ((RouteChildren & RouteProps) | RouteProps)
+export type RouteMap = { [routeMapSymbol]: any }
+export type Route = ReverseRoute & RouteProps & { [routeSymbol]: any }
 export type ReverseRoute = (params?: object) => string
-export type RouteChildren = { [child: string]: Route }
 export type RouteProps = {
   data?: any,
   path: Path,
-  [routeSymbol]: { parent: Route, name: string, children: RouteChildren },
   toString(): string,
 }
-type Path = string | { [language: string]: string }
 
-export type HandlerOf<A> =
-  A extends (...args: any) => infer B ? ((params?: object, route?: Route) => B) :
-  never
-export type ReturnTypesOf<A> =
-  A extends [[Route, infer B], ...infer C] ? ReturnTypeOf<B> | ReturnTypesOf<C> :
-  never
-export type ReturnTypeOf<A> = A extends (...args: any) => any ? ReturnType<A> : A
-
-// https://github.com/microsoft/TypeScript/issues/30680
-export type Narrowable = string | number | boolean | symbol | object | undefined | void | null | {}
-
-export type RouteMapInput = { [name: string]: RouteInput }
-type RouteInput = string | (RouteInputChildren & RouteInputObject) | RouteInputObject
+export type RouteInputChildren = { [K in Exclude<keyof RouteInputObject, string>]: RouteInput }
+type RouteInput = string | RouteInputWithChildren
+type RouteInputWithChildren = RouteInputChildren & RouteInputObject
 type RouteInputObject = { path: Path, data?: any }
-type RouteInputChildren = { [K in Exclude<keyof RouteInputObject, string>]: RouteInput }
+type Path = string | { [locale: string]: string }
 
-export type AsRouteMap<A> =
-  { [K in keyof A]: AsRoute<A[K], {}> } &
-  { [routeMapSymbol]: { children: { [K in keyof A]: AsRoute<A[K], {}> } } }
-type AsRoute<A, Params> = ((params?: Params & AsParams<A>) => string) & (
-  A extends string ? AsRouteProps<{ path: A, data: undefined }> :
-  A extends (RouteInputChildren & RouteInputObject) ? AsRouteChildren<Omit<A, keyof RouteInputObject>, Params & AsParams<A>> & AsRouteProps<A> :
-  A extends RouteInputObject ? AsRouteProps<A> :
-  never
-)
-type AsRouteChildren<A, Params> = { [K in keyof A]: AsRoute<A[K], Params> }
-type AsRouteProps<A extends RouteInputObject> = {
-  path: A['path'],
-  data: A['data'],
-  [routeSymbol]: { parent: Route, name: string, children: RouteChildren },
-  toString(): string,
-}
-type AsParams<A> = LanguageSupport & (
-  A extends string ? { [K in StringAsParams<A>]: string } :
-  A extends RouteInputObject ? { [K in StringAsParams<A['path']>]: string } :
-  never
-)
-type StringAsParams<A> =
-  A extends { [language: string]: infer B } ? StringAsParams<B> :
-  A extends `:${infer B}/${infer C}` ? B | StringAsParams<C> :
-  A extends `:${infer B}` ? B :
-  A extends `${infer B}/${infer C}` ? StringAsParams<C> :
-  A extends `*` ? '*' :
-  never
-type LanguageSupport = { language?: string }
+type EmptyParams = {}
+
+export type AsRouteMap<Input extends RouteInputChildren, LocaleParamName extends string = 'language'> =
+  ReturnType<typeof asRouteMap<Input, LocaleParamName>>
 
 export type Config = {
   trailingSlash?: boolean
-  languageParamName?: string
+  localeParamName?: string
+}
+
+export type ExtractLocaleParamName<T extends Config> =
+  T['localeParamName'] extends infer X
+    ? (string extends X ? 'language' : X)
+    : never
+
+// declaring the types inside a function to prevent passing arround LocaleParamName
+function asRouteMap<Input extends RouteInputChildren, LocaleParamName extends string>() {
+
+  type AsRouteMap<Input extends RouteInputChildren> =
+    AsRouteChildren<Input, EmptyParams> &
+    { [routeMapSymbol]: any }
+
+  type AsRouteChildren<Input extends RouteInputChildren, PreviousParams> =
+    { [K in keyof Input]: Expand<AsRoute<Input[K], PreviousParams & AsParams<Input[K]>>> }
+
+  type AsRoute<Input, Params> =
+    AsReverseRoute<Params> & (
+      Input extends string ? AsRouteProps<{ path: Input, data: undefined }> :
+      Input extends RouteInputWithChildren ? AsRouteWithChildren<Input, Params> :
+      never
+    )
+
+  type AsReverseRoute<Params> =
+    keyof Params extends never ? () => string :
+    (params: Expand<Params>) => string
+
+  type AsRouteWithChildren<Input extends RouteInputWithChildren, Params> =
+    AsRouteProps<Input> &
+    AsRouteChildren<Omit<Input, keyof RouteInputObject>, Params>
+
+  type AsRouteProps<Input extends RouteInputObject> = {
+    path: Input['path'],
+    data: Input['data'],
+    toString(): string,
+    [routeSymbol]: any,
+  }
+
+  type AsParams<Input> = (
+    Input extends string ? { [K in PathAsParamNames<Input>]: string } :
+    Input extends RouteInputObject ? { [K in PathAsParamNames<Input['path']>]: string } :
+    never
+  )
+
+  type PathAsParamNames<Input> =
+    Input extends { [locale: string]: infer B } ? LocaleParamName | PathAsParamNames<B> :
+    Input extends `:${infer B}/${infer C}` ? B | PathAsParamNames<C> :
+    Input extends `:${infer B}` ? B :
+    Input extends `${infer B}/${infer C}` ? PathAsParamNames<C> :
+    Input extends `*` ? '*' :
+    never
+
+  return (null as Expand<AsRouteMap<Input>>)
 }
