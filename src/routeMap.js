@@ -1,6 +1,6 @@
-import { callOrReturn, mapValues } from './utils'
-/** @import { Const } from './machinery/typescript-utils' */
-/** @import { AsRouteMap, Config, ExtractLocaleParamName, Route, RouteInputChildren } from './types' */
+import { callOrReturn, mapValues } from './utils.js'
+/** @import { Const } from './machinery/typescript-utils.ts' */
+/** @import { AsRouteMap, Config, ExtractLocaleParamName, Route, RouteInputChildren } from './types.ts' */
 
 
 export const defaultConfig = {
@@ -277,7 +277,10 @@ function withReverseRoute(config, route) {
       currentRoute = parent
     } while (currentRoute)
 
-    return resolvedPath ? resolvedPath + pathEnd : '/'
+    if (!resolvedPath)
+      return '/'
+
+    return resolvedPath.endsWith(pathEnd) ? resolvedPath : resolvedPath + pathEnd
   }
 }
 

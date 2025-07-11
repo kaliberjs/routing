@@ -1,4 +1,4 @@
-import { Expand } from './machinery/typescript-utils'
+import { Expand } from './machinery/typescript-utils.ts'
 import type { routeSymbol, routeMapSymbol } from './routeMap.js'
 
 export type RouteMap = { [routeMapSymbol]: any }
