@@ -31,6 +31,6 @@
     "postinstall": "[ -d ./scripts -a -f ./scripts/install-peer-dependencies-for-typescript.js ] && node ./scripts/install-peer-dependencies-for-typescript.js || true"
   },
   "peerDependencies": {
-    "react": "^19.1.0"
+    "react": "^18.3.1"
   }
 }
