@@ -277,7 +277,10 @@ function withReverseRoute(config, route) {
       currentRoute = parent
     } while (currentRoute)
 
-    return resolvedPath ? resolvedPath + pathEnd : '/'
+    if (!resolvedPath)
+      return '/'
+
+    return resolvedPath.endsWith(pathEnd) ? resolvedPath : resolvedPath + pathEnd
   }
 }
 

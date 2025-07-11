@@ -619,6 +619,13 @@ describe('interpolate', () => {
     expect(c()).toBe('/abc/def/')
     expect(d()).toBe('/abc/def/ghi/')
   })
+   test('no interpolation - no trailing slash', () => {
+    const { a, b, c, d } = asRouteMap({ a: '', b: 'abc', c: 'abc/def', d: 'abc/def/ghi' }, { trailingSlash: false })
+    expect(a()).toBe('/')
+    expect(b()).toBe('/abc')
+    expect(c()).toBe('/abc/def')
+    expect(d()).toBe('/abc/def/ghi')
+  })
   test('interpolation', () => {
     const { a, b, c, d, e, f, g, h, i, j, k, l } = asRouteMap({
       a: ':a',
@@ -641,6 +648,7 @@ describe('interpolate', () => {
     expect(c({ a: 'b' })).toBe('/b/b/')
     expect(d({ a: 'b' })).toBe('/b/b/')
     expect(e({ '*': 'b' })).toBe('/b/b/')
+    expect(e({ '*': 'b/' })).toBe('/b/b/')
     expect(f({ a: 'b' })).toBe('/b/b/')
     expect(g({ a: 'b', '*': 'c' })).toBe('/b/c/')
     expect(h({ a: 'b' })).toBe('/a/b/b/')
@@ -650,6 +658,39 @@ describe('interpolate', () => {
     expect(k({ def: 'ghi' })).toBe('/a/abc:def/b/')
     // @ts-ignore
     expect(l({ def: 'ghi', '*': 'j' })).toBe('/a/abc:def/b/j/')
+  })
+  test('interpolation - no trailing slash', () => {
+    const { a, b, c, d, e, f, g, h, i, j, k, l } = asRouteMap({
+      a: ':a',
+      b: '*',
+      c: ':a/b',
+      d: 'b/:a',
+      e: 'b/*',
+      f: ':a/:a',
+      g: ':a/*',
+      h: 'a/:a/b',
+      i: 'a/:a/b/*',
+      j: 'a/:a/b/:b',
+      // don't use these in real routes:
+      k: 'a/abc:def/b',
+      l: 'a/abc:def/b/*',
+    }, { trailingSlash: false })
+
+    expect(a({ a: 'b' })).toBe('/b')
+    expect(b({ '*': 'b' })).toBe('/b')
+    expect(c({ a: 'b' })).toBe('/b/b')
+    expect(d({ a: 'b' })).toBe('/b/b')
+    expect(e({ '*': 'b' })).toBe('/b/b')
+    expect(e({ '*': 'b/' })).toBe('/b/b/')
+    expect(f({ a: 'b' })).toBe('/b/b')
+    expect(g({ a: 'b', '*': 'c' })).toBe('/b/c')
+    expect(h({ a: 'b' })).toBe('/a/b/b')
+    expect(i({ a: 'b', '*': 'c' })).toBe('/a/b/b/c')
+    expect(j({ a: 'b', 'b': 'c' })).toBe('/a/b/b/c')
+    // @ts-ignore
+    expect(k({ def: 'ghi' })).toBe('/a/abc:def/b')
+    // @ts-ignore
+    expect(l({ def: 'ghi', '*': 'j' })).toBe('/a/abc:def/b/j')
   })
 })
 
