@@ -1,7 +1,7 @@
 
-import { getHistory } from './history'
-import { callOrReturn } from './utils'
-import { pickRoute, routeSymbol } from './routeMap'
+import { getHistory } from './history.js'
+import { callOrReturn } from './utils.js'
+import { pickRoute, routeSymbol } from './routeMap.js'
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
 /**
@@ -27,11 +27,11 @@ const routeContext = React.createContext(null)
 const inBrowser = typeof window !== 'undefined'
 
 /**
-  @template {JSX.Element} T
+  @template {React.JSX.Element} T
   @typedef {[route: Route, createChildren: ((params: object) => T) | T]} RoutePair
   @returns {{
-    matchRoutes<T>(...routes: Array<RoutePair<T>>): JSX.Element,
-    matchRoute<T>(...route: RoutePair<T>): JSX.Element,
+    matchRoutes<T>(...routes: Array<RoutePair<T>>): React.JSX.Element,
+    matchRoute<T>(...route: RoutePair<T>): React.JSX.Element,
   }}
 */
 export function useRouting() {
@@ -269,6 +269,6 @@ function shouldNavigate(e) {
 }
 
 /**
- * @typedef {import('./types').Route} Route
- * @typedef {import('./types').RouteMap} RouteMap
+ * @typedef {import('./types.ts').Route} Route
+ * @typedef {import('./types.ts').RouteMap} RouteMap
  */

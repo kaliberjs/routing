@@ -1,6 +1,6 @@
-import { callOrReturn, mapValues } from './utils'
-/** @import { Const } from './machinery/typescript-utils' */
-/** @import { AsRouteMap, Config, ExtractLocaleParamName, Route, RouteInputChildren } from './types' */
+import { callOrReturn, mapValues } from './utils.js'
+/** @import { Const } from './machinery/typescript-utils.ts' */
+/** @import { AsRouteMap, Config, ExtractLocaleParamName, Route, RouteInputChildren } from './types.ts' */
 
 
 export const defaultConfig = {
