@@ -94,7 +94,7 @@ function Home() {
 function Articles() {
   const language = useLanguage()
   const routes = routeMap.app.articles
-  const { title } = routeMap.app.home.data
+  const { title } = routes.data
   const { articles } = useAsyncRouteData({ initialValue: { articles: [] }, route: routes.list })
   return (
     <div>
