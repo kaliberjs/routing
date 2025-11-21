@@ -1,6 +1,7 @@
 module.exports = {
   kaliber: {
-    compileWithBabel: [/@kaliber\//, /@react-spring\/core/, /@react-spring\/shared/],
-    symlinks: false,
+    includeInServerCompilation: [/^@kaliber\/routing/, /^@kaliber\/build/],
+    /** @arg {Error} e */
+    reportError(e) { console.error(e) },
   }
 }
