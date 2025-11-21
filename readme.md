@@ -211,7 +211,6 @@ There are a few methods used for matching routes, some are used on the client, o
   - `pick`
 - Client
   - `useRouting` (with `matchRoute` and `matchRoutes`)
-  - `useMatchedRoute`
   - `useLocationMatch`
   - `usePick` (with `pick`)
 
@@ -255,15 +254,6 @@ Mainly used inside the render tree. Allows you to render based on a matched rout
 
 ---
 
-### `useMatchedRoute`
-
-```js
-function useMatchedRoute(): Route | null
-```
-
-Returns the currently active route as determined by calls to `matchRoute` and `matchRoutes` of `useRouting`.
-
----
 ### `useLocationMatch`
 
 ```js
@@ -271,8 +261,6 @@ function useLocationMatch(): { params: object, route: Route } | null
 ```
 
 Similar to `pickRoute` it returns the matched `Route` with it's `params` when a match was found, `null` otherwise. A small difference is that the returned route has the `params` partially applied to its reverse route function. This means that you do not need to supply any parameters that would be required by any parent routes.
-
-The difference with `useMatchedRoute` is that this returns the route that was picked from the `routeMap`, regardless of the matching that happened up to this point. This can be useful for things like language selectors.
 
 ---
 ### `usePick`
@@ -349,15 +337,6 @@ function asRouteChain(route: Route): Array<Route>
 ```
 
 Returns an array of all routes from the root of the route map up to (and including) the given route. This can be useful when rendering on the server and loading all required data.
-
----
-### `useMatchedRouteData`
-
-```js
-function useMatchedRouteData(): any | null
-```
-
-Convenience function. Equivalent to `useMatchedRoute().data`.
 
 ---
 ### `useLocation`

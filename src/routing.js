@@ -18,8 +18,6 @@ const locationContext = React.createContext(undefined)
 const navigateContext = React.createContext(undefined)
 /** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
 const rootContext = React.createContext(undefined)
-/** @type {React.Context<Route | null>} */
-const routeContext = React.createContext(null)
 
 const inBrowser = typeof window !== 'undefined'
 
@@ -44,8 +42,7 @@ export function useRouting() {
     if (!result) return null
 
     const { route, params } = result
-    const children = callOrReturn(routeLookup.get(route), params)
-    return <routeContext.Provider value={route} {...{ children }} />
+    return callOrReturn(routeLookup.get(route), params)
   }
 }
 
@@ -71,18 +68,6 @@ export function useRootContext() {
   const context = React.useContext(rootContext)
   if (!context) throw new Error('Please use a `LocationProvider` to supply a route root context')
   return context
-}
-
-export function useMatchedRoute() {
-  const currentRoute = React.useContext(routeContext)
-  if (!currentRoute) return null
-
-  return currentRoute
-}
-
-export function useMatchedRouteData() {
-  const currentRoute = useMatchedRoute()
-  return currentRoute && currentRoute.data
 }
 
 export function useHistory() {
