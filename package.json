@@ -1,6 +1,6 @@
 {
   "name": "@kaliber/routing",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "main": "index.js",
   "sideEffects": false,
   "publishConfig": {
