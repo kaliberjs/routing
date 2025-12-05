@@ -3,6 +3,7 @@ import '/index.css'
 import stylesheet from '@kaliber/build/lib/stylesheet'
 import javascript from '@kaliber/build/lib/javascript'
 import polyfill from '@kaliber/build/lib/polyfill'
+// @ts-expect-error
 import App from './App?universal'
 import { pick } from '@kaliber/routing'
 import { fetchRouteData } from './machinery/RouteData'

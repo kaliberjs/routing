@@ -1,6 +1,6 @@
 import { usePick, useRouting, Link, LocationProvider, useLocation, StaticLocationProvider } from '@kaliber/routing'
 import { routeMap } from './routeMap'
-import { animated, useTransition } from 'react-spring'
+import { animated, useTransition } from '@react-spring/web'
 import styles from './App.css'
 
 export default function App({ initialLocation }) {
