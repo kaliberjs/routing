@@ -1,7 +1,4 @@
 {
-  "typeAcquisition": {
-    "enable": true
-  },
   "include": [
     "./src/**/*",
     "./scripts/**/*",
