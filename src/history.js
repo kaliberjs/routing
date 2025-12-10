@@ -6,6 +6,7 @@ export function getHistory() {
   let listeners = []
   let location = getLocation()
 
+  // eslint-disable-next-line no-return-assign
   return getHistory.singleton = {
     get location() { return location },
 

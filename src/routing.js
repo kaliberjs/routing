@@ -105,18 +105,22 @@ export function usePick() {
   )
 }
 
+// eslint-disable-next-line @kaliber/naming-policy
 export function LocationProvider({
   basePath = '',
   initialLocation = undefined,
   routeMap,
   children,
 }) {
-  return <RootContextProvider {...{ routeMap, basePath }} children={inBrowser
-    ? <BrowserLocationProvider {...{ children, basePath }} />
-    : <ServerLocationProvider {...{ children, initialLocation }} />
-  } />
+  return (
+    <RootContextProvider {...{ routeMap, basePath }} children={inBrowser
+      ? <BrowserLocationProvider {...{ children, basePath }} />
+      : <ServerLocationProvider {...{ children, initialLocation }} />
+    } />
+  )
 }
 
+// eslint-disable-next-line @kaliber/naming-policy
 export function StaticLocationProvider({ location, children }) {
   if (!location) throw new Error(`Your need to supply a location for the static location provider`)
   const locationLive = React.useContext(locationContext)
@@ -127,12 +131,15 @@ export function StaticLocationProvider({ location, children }) {
   )
   const navigateLive = React.useContext(navigateContext)
 
-  return <navigateContext.Provider
-    value={location === locationLive ? navigateLive : navigateStatic}
-    children={<LocationAndMatchContextProvider {...{ location, children }} />}
-  />
+  return (
+    <navigateContext.Provider
+      value={location === locationLive ? navigateLive : navigateStatic}
+      children={<LocationAndMatchContextProvider {...{ location, children }} />}
+    />
+  )
 }
 
+// eslint-disable-next-line @kaliber/naming-policy
 export function Link({
   to,
   replace = undefined,
@@ -146,10 +153,13 @@ export function Link({
   const location = useLocation()
   const href = resolve(basePath, to)
 
-  return <a
-    {...anchorProps}
-    {...{ href, children, onClick }}
-  />
+  return (
+    // eslint-disable-next-line jsx-a11y/anchor-has-content
+    <a
+      {...anchorProps}
+      {...{ href, children, onClick }}
+    />
+  )
 
   function onClick(e) {
     if (anchorProps && anchorProps.onClick) anchorProps.onClick(e)
@@ -186,13 +196,15 @@ function BrowserLocationProvider({ children, basePath }) {
 
   const navigate = React.useCallback((to, ...rest) =>
     history.navigate(typeof to === 'string' ? resolve(basePath, to) : to, ...rest),
-    [history, basePath]
+  [history, basePath]
   )
 
-  return <navigateContext.Provider
-    value={navigate}
-    children={<HistoryBasedLocationProvider {...{ children }} />}
-  />
+  return (
+    <navigateContext.Provider
+      value={navigate}
+      children={<HistoryBasedLocationProvider {...{ children }} />}
+    />
+  )
 }
 
 function ServerLocationProvider({ initialLocation: location, children }) {
@@ -203,10 +215,12 @@ function ServerLocationProvider({ initialLocation: location, children }) {
     []
   )
 
-  return <navigateContext.Provider
-    value={navigate}
-    children={<LocationAndMatchContextProvider {...{ location, children }} />}
-  />
+  return (
+    <navigateContext.Provider
+      value={navigate}
+      children={<LocationAndMatchContextProvider {...{ location, children }} />}
+    />
+  )
 }
 
 function MatchContextProvider({ children }) {
@@ -227,9 +241,9 @@ function MatchContextProvider({ children }) {
 function LocationAndMatchContextProvider({ location, children }) {
   return (
     <locationContext.Provider
-        value={location}
-        children={<MatchContextProvider {...{ children }} />}
-      />
+      value={location}
+      children={<MatchContextProvider {...{ children }} />}
+    />
   )
 }
 
