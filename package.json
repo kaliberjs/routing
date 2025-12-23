@@ -17,7 +17,8 @@
     "src/**",
     "LICENSE",
     "readme.md",
-    "package.json"
+    "package.json",
+    "types.ts"
   ],
   "private": false,
   "license": "MIT",

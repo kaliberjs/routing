@@ -2,10 +2,7 @@
   "include": [
     "./src/**/*",
     "./scripts/**/*",
-    "./typescript/**/*",
     "index.js"
-  ],
-  "exclude": [
   ],
   "compilerOptions": {
     "moduleResolution": "bundler",

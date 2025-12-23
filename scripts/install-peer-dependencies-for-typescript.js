@@ -1,5 +1,5 @@
 import path from 'node:path'
-import config from '../package.json' with { type: 'json' }
+import config from '../package.json' with { type: 'json' } // eslint-disable-line @kaliber/no-relative-parent-import
 import childProcess from 'node:child_process'
 import fs from 'node:fs'
 
