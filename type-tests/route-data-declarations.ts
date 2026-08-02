@@ -104,6 +104,16 @@ type ParameterlessGeneratedRouteSatisfiesPublicRoute = Assert<
   TestRouteMap['root'] extends Route ? true : false
 >
 
+type ParameterizedGeneratedRouteSatisfiesPublicRoute = Assert<
+  TestRouteMap['app']['home'] extends Route ? true : false
+>
+
+type KeepConcreteRoute<R extends Route> = R
+type RouteConstraintPreservesParameters = Assert<Equal<
+  Parameters<KeepConcreteRoute<TestRouteMap['app']['home']>>,
+  [{ countryAndLanguage: string }]
+>>
+
 type PublicRouteHasNoInventedAncestry = Assert<Equal<
   RouteDataDeclarations<Route>,
   readonly []
@@ -136,6 +146,8 @@ export type RouteTypeAssertions = {
   missingDataStaysUndefined: MissingDataStaysUndefined
   explicitUndefinedStaysUndefined: ExplicitUndefinedStaysUndefined
   parameterlessGeneratedRouteSatisfiesPublicRoute: ParameterlessGeneratedRouteSatisfiesPublicRoute
+  parameterizedGeneratedRouteSatisfiesPublicRoute: ParameterizedGeneratedRouteSatisfiesPublicRoute
+  routeConstraintPreservesParameters: RouteConstraintPreservesParameters
   publicRouteHasNoInventedAncestry: PublicRouteHasNoInventedAncestry
   unrelatedObjectsHaveNoAncestry: UnrelatedObjectsHaveNoAncestry
   routeUnionsPreserveEachChain: RouteUnionsPreserveEachChain

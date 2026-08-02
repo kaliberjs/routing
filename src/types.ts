@@ -8,8 +8,11 @@ type RouteTypeMetadata<DataDeclarations extends readonly unknown[]> = {
   readonly [routeDataDeclarationsSymbol]: DataDeclarations,
 }
 
+/** Broad callable constraint; generated routes retain their exact parameter tuple. */
+type RouteCallable = (...parameters: any[]) => string
+
 export type RouteMap = { [routeMapSymbol]: any }
-export type Route = ReverseRoute & RouteProps & { [routeSymbol]: any }
+export type Route = RouteCallable & RouteProps & { [routeSymbol]: any }
 /** The root-to-route `data` declarations retained by `AsRouteMap`. */
 export type RouteDataDeclarations<R> =
   R extends RouteTypeMetadata<infer DataDeclarations> ? DataDeclarations : readonly []
