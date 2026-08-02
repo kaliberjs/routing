@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "./src/types.ts",
+    "./type-tests/**/*.ts"
+  ],
+  "exclude": [
+    "./typescript/**/*"
+  ],
+  "compilerOptions": {
+    "checkJs": false,
+    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true
+  }
+}
