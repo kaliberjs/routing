@@ -303,6 +303,10 @@ const dutchJobsAreActive = useRouteActive(
 ```js
 function Link({
   to: string,
+  prefetch: 'none' | 'intent' | {
+    run?: ({ to, href, trigger: 'pointer' | 'focus' | 'touch' }) => void | Promise<void>,
+    intentDelay?: number,
+  },
   replace: boolean,
   state: object,
   anchorProps: object,
@@ -314,6 +318,8 @@ This is essentially an `<a href="...">` that uses the history API. The `anchorPr
 
 If you want to prevent the default click handling in certain situations you can supply `anchorProps.onClick` and call `event.preventDefault()` from the event handler.
 
+Set `prefetch='intent'` to opt a link into best-effort prefetching. The link will prefetch once on hover intent, keyboard focus, or touch start. You can also supply an object to override the root `run` function or the `intentDelay` for a single link.
+
 ---
 ### `useNavigate`
 
@@ -322,6 +328,100 @@ function useNavigate(): (to: number | string, { state: object, replace?: boolean
 ```
 
 Allows you to navigate without using the `Link` component. Note that a call to the resulting function will not work when rendering on the server.
+
+---
+### Prefetching
+
+Prefetching is intentionally cache-agnostic. `@kaliber/routing` only decides when to prefetch, not what should be cached or invalidated.
+
+Provide a default prefetcher at the root:
+
+```js
+<LocationProvider
+  initialLocation={location}
+  routeMap={routeMap}
+  prefetch={{
+    run: ({ to, href, trigger }) => {
+      console.log('prefetch', { to, href, trigger })
+    },
+    intentDelay: 80,
+  }}
+>
+  <Page />
+</LocationProvider>
+```
+
+Then opt links into intent prefetching:
+
+```js
+<Link to={routeMap.articles.article({ articleId })} prefetch='intent'>
+  {title}
+</Link>
+```
+
+You can override the root prefetcher per link:
+
+```js
+<Link
+  to={routeMap.articles.article({ articleId })}
+  prefetch={{
+    run: ({ to }) => warmArticleCache(to),
+    intentDelay: 0,
+  }}
+>
+  {title}
+</Link>
+```
+
+#### Route-chain prefetch example
+
+If your app uses `route.data`, you can warm route data by matching the destination and traversing the route chain:
+
+```js
+import { asRouteChain, pickRoute } from '@kaliber/routing'
+
+function createRouteDataPrefetch({ routeMap, cache }) {
+  return async function run({ to }) {
+    const match = pickRoute(to, routeMap)
+    if (!match) return
+
+    const { route, params } = match
+    await asRouteChain(route).reduce(
+      async (previousDataPromise, route) => {
+        const previousData = await previousDataPromise
+        if (typeof route.data !== 'function') return previousData
+
+        const data = await route.data({ ...params, ...previousData })
+        cache.set(route(params), data)
+
+        return { ...previousData, ...data }
+      },
+      Promise.resolve({})
+    )
+  }
+}
+```
+
+#### TanStack Query example
+
+If your app already has a query cache, use the link prefetch callback to warm it:
+
+```js
+import { pickRoute } from '@kaliber/routing'
+
+const prefetch = {
+  run: ({ to }) => {
+    const match = pickRoute(to, routeMap)
+    if (match?.route !== routeMap.articles.article) return
+
+    return queryClient.prefetchQuery({
+      queryKey: ['article', match.params.articleId],
+      queryFn: () => fetchArticle(match.params),
+      staleTime: 30_000,
+    })
+  },
+}
+```
 
 ---
 ---
@@ -333,12 +433,18 @@ Allows you to navigate without using the `Link` component. Note that a call to t
 function LocationProvider({
   basePath: string,
   initialLocation: { pathname: string, search: string, hash: string },
+  prefetch?: {
+    run: ({ to, href, trigger: 'pointer' | 'focus' | 'touch' }) => void | Promise<void>,
+    intentDelay?: number,
+  },
   routeMap: RouteMap,
   children,
 })
 ```
 
 This provides the context for all of the routing related hooks. It detects the difference between client and server side rendering: if `window` is undefined it will use the `initialLocation` for the match.
+
+Links only prefetch when they opt in via `prefetch='intent'` or a link-specific `prefetch` object. The root `prefetch` prop defines the default behavior for those links.
 
 ---
 ### `StaticLocationProvider`
@@ -381,6 +487,42 @@ function useHistory(): { location, listen(listener), navigate(to, { state, repla
 Returns a reference to the history wrapper. Note that the resulting object can not be used in a non browser context. Also note that the navigate function here ignores the `basePath`.
 
 ---
+### `createSpeculationRules`
+
+```js
+function createSpeculationRules({
+  prefetch?: Array<string>,
+  prerender?: Array<string>,
+  eagerness?: 'conservative' | 'moderate' | 'eager',
+}): string
+```
+
+Returns a JSON string for a `<script type='speculationrules'>` tag. This is useful for browser-managed document prefetching or prerendering, but it does not apply to the soft navigations triggered by `Link`.
+
+```js
+import { createSpeculationRules } from '@kaliber/routing'
+
+const speculationRules = createSpeculationRules({
+  prerender: ['/pricing', '/contact'],
+  eagerness: 'moderate',
+})
+
+export default function Document() {
+  return (
+    <html>
+      <head>
+        <script
+          type='speculationrules'
+          dangerouslySetInnerHTML={{ __html: speculationRules }}
+        />
+      </head>
+      <body>...</body>
+    </html>
+  )
+}
+```
+
+---
 ---
 ## Motivation
 
@@ -400,5 +542,3 @@ Reverse routing is missing in most routing libraries.
 
 - Why is the route map itself not a route?
   - It would make it impossible to have home as a route that is not the parent of any other routes. This makes some data fetching patterns impossible.
-
-

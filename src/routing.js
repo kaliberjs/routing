@@ -1,5 +1,12 @@
 
 import { getHistory } from './history.js'
+import {
+  createLinkHandlers,
+  createPrefetchState,
+  normalizeRootPrefetch,
+  resetPrefetchState,
+  resolveLinkPrefetch,
+} from './link.js'
 import { callOrReturn } from './utils.js'
 import { pickRoute } from './routeMap.js'
 import { pickMatchedRoute, routeIsActive } from './routeMatch.js'
@@ -18,7 +25,7 @@ const matchContext = React.createContext(null)
 const locationContext = React.createContext(undefined)
 /** @type {React.Context<((to: number | string, x?: { state?: object, replace?: boolean }) => void) | undefined>} */
 const navigateContext = React.createContext(undefined)
-/** @type {React.Context<{ basePath: string, routeMap: RouteMap } | undefined>} */
+/** @type {React.Context<{ basePath: string, routeMap: RouteMap, prefetch: null | { run: Function, intentDelay: number } } | undefined>} */
 const rootContext = React.createContext(undefined)
 
 const inBrowser = typeof window !== 'undefined'
@@ -103,10 +110,11 @@ export function useRouteActive(route, options) {
 export function LocationProvider({
   basePath = '',
   initialLocation = undefined,
+  prefetch = undefined,
   routeMap,
   children,
 }) {
-  return <RootContextProvider {...{ routeMap, basePath }} children={inBrowser
+  return <RootContextProvider {...{ routeMap, basePath, prefetch }} children={inBrowser
     ? <BrowserLocationProvider {...{ children, basePath }} />
     : <ServerLocationProvider {...{ children, initialLocation }} />
   } />
@@ -130,34 +138,50 @@ export function StaticLocationProvider({ location, children }) {
 
 export function Link({
   to,
+  prefetch = 'none',
   replace = undefined,
   state: newState = undefined,
   anchorProps = null,
   children
 }) {
   if (typeof to !== 'string') throw new Error(`Parameter 'to' passed to link is not a string: ${to}`)
-  const { basePath } = useRootContext()
+  const { basePath, prefetch: rootPrefetch } = useRootContext()
   const navigate = useNavigate()
   const location = useLocation()
   const href = resolve(basePath, to)
+  const linkPrefetch = resolveLinkPrefetch(prefetch, rootPrefetch)
+  const prefetchState = React.useRef(createPrefetchState())
+
+  React.useEffect(
+    () => () => resetPrefetchState(prefetchState.current),
+    []
+  )
+
+  React.useEffect(
+    () => {
+      resetPrefetchState(prefetchState.current)
+    },
+    [to, linkPrefetch?.run]
+  )
+
+  const handlers = createLinkHandlers({
+    anchorProps,
+    href,
+    inBrowser,
+    location,
+    navigate,
+    prefetch: linkPrefetch,
+    prefetchState: prefetchState.current,
+    replace,
+    state: newState,
+    to,
+  })
 
   return <a
     {...anchorProps}
-    {...{ href, children, onClick }}
+    {...handlers}
+    {...{ href, children }}
   />
-
-  function onClick(e) {
-    if (anchorProps && anchorProps.onClick) anchorProps.onClick(e)
-    if (shouldNavigate(e)) {
-      e.preventDefault()
-      const { pathname, state: currentState } = location
-      const shouldReplace = replace === undefined
-        ? pathname === encodeURI(href) && shallowEqual(currentState || {}, newState || {})
-        : replace
-
-      navigate(to, { replace: shouldReplace, state: newState })
-    }
-  }
 }
 
 function HistoryBasedLocationProvider({ children }) {
@@ -228,33 +252,17 @@ function LocationAndMatchContextProvider({ location, children }) {
   )
 }
 
-function RootContextProvider({ children, routeMap, basePath }) {
+function RootContextProvider({ children, routeMap, basePath, prefetch }) {
   const contextRef = React.useRef(routeMap)
   if (contextRef.current !== routeMap) throw new Error('Make sure the given context is stable (does not mutate between renders)')
 
   const value = React.useMemo(
-    () => ({ basePath, routeMap }),
-    [routeMap, basePath],
+    () => ({ basePath, routeMap, prefetch: normalizeRootPrefetch(prefetch) }),
+    [routeMap, basePath, prefetch],
   )
   return <rootContext.Provider {...{ value, children }} />
 }
 
 function resolve(basePath, to) {
   return `${basePath}${to}`
-}
-
-function shallowEqual(o1, o2) {
-  const o1Keys = Object.keys(o1)
-  return (
-    o1Keys.length === Object.keys(o2).length &&
-    o1Keys.every(key => o2.hasOwnProperty(key) && o1[key] === o2[key])
-  )
-}
-
-function shouldNavigate(e) {
-  return (
-    !e.defaultPrevented &&
-    e.button === 0 &&
-    !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-  )
 }
