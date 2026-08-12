@@ -1,4 +1,11 @@
-import type { AsRouteMap, Route, RouteDataDeclarations } from '../src/types.ts'
+import type {
+  AsRouteMap,
+  Route,
+  RouteActiveOptions,
+  RouteDataDeclarations,
+  RouteMatch,
+  RouteParams,
+} from '../src/types.ts'
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends
@@ -90,6 +97,33 @@ type DeepParamsIncludeAncestors = Assert<Equal<
   [{ countryAndLanguage: string, id: string }]
 >>
 
+type ParameterlessRouteParamsAreEmpty = Assert<Equal<
+  RouteParams<TestRouteMap['root']>,
+  {}
+>>
+
+type ParameterizedRouteParamsAreExact = Assert<Equal<
+  RouteParams<TestRouteMap['app']['section']['detail']>,
+  { countryAndLanguage: string, id: string }
+>>
+
+type RouteMatchKeepsRouteAndParamsCorrelated = Assert<Equal<
+  RouteMatch<TestRouteMap['app']['home'] | TestRouteMap['app']['stringLeaf']>,
+  | {
+    route: TestRouteMap['app']['home']
+    params: { countryAndLanguage: string }
+  }
+  | {
+    route: TestRouteMap['app']['stringLeaf']
+    params: { countryAndLanguage: string, slug: string }
+  }
+>>
+
+type ActiveRouteParamsArePartial = Assert<Equal<
+  NonNullable<RouteActiveOptions<TestRouteMap['app']['section']['detail']>['params']>,
+  { countryAndLanguage?: string, id?: string }
+>>
+
 type MissingDataStaysUndefined = Assert<Equal<
   RouteDataDeclarations<TestRouteMap['plain']['child']>,
   readonly [undefined, undefined]
@@ -143,6 +177,10 @@ export type RouteTypeAssertions = {
   stringChildParamsIncludeAncestors: StringChildParamsIncludeAncestors
   deepDeclarationsStayOrdered: DeepDeclarationsStayOrdered
   deepParamsIncludeAncestors: DeepParamsIncludeAncestors
+  parameterlessRouteParamsAreEmpty: ParameterlessRouteParamsAreEmpty
+  parameterizedRouteParamsAreExact: ParameterizedRouteParamsAreExact
+  routeMatchKeepsRouteAndParamsCorrelated: RouteMatchKeepsRouteAndParamsCorrelated
+  activeRouteParamsArePartial: ActiveRouteParamsArePartial
   missingDataStaysUndefined: MissingDataStaysUndefined
   explicitUndefinedStaysUndefined: ExplicitUndefinedStaysUndefined
   parameterlessGeneratedRouteSatisfiesPublicRoute: ParameterlessGeneratedRouteSatisfiesPublicRoute

@@ -213,6 +213,7 @@ There are a few methods used for matching routes, some are used on the client, o
   - `useRouting` (with `matchRoute` and `matchRoutes`)
   - `useLocationMatch`
   - `usePick` (with `pick`)
+  - `useRouteActive`
 
 ---
 ### `pickRoute`
@@ -266,10 +267,32 @@ Similar to `pickRoute` it returns the matched `Route` with it's `params` when a 
 ### `usePick`
 
 ```js
-function usePick(): (...routes: Array<Route>) => Route
+function usePick(): <R extends Route>(...routes: Array<R>) => { route: R, params: RouteParams<R> } | null
 ```
 
 Returns a function that lets you choose a route from an array of routes, or `null` if nothing matched. The selected route is found by traversing the parents of the picked route (`useLocationMatch`).
+
+The selected route and its parameters remain correlated. Narrowing `result.route` therefore narrows `result.params` to the parameters accepted by that route.
+
+---
+### `useRouteActive`
+
+```js
+function useRouteActive<R extends Route>(route: R, {
+  exact?: boolean,
+  params?: Partial<RouteParams<R>>,
+} = {}): boolean
+```
+
+Reports whether `route` is the current route or one of its ancestors. Set `exact` to only match the current route. Supply `params` to require some or all of that route's parameters to match as well.
+
+```js
+const jobsSectionIsActive = useRouteActive(routeMap.app.jobs)
+const dutchJobsAreActive = useRouteActive(
+  routeMap.app.jobs,
+  { params: { language: 'nl' } }
+)
+```
 
 ---
 ---
@@ -377,7 +400,5 @@ Reverse routing is missing in most routing libraries.
 
 - Why is the route map itself not a route?
   - It would make it impossible to have home as a route that is not the parent of any other routes. This makes some data fetching patterns impossible.
-
-
 
 

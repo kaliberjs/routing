@@ -13,6 +13,18 @@ type RouteCallable = (...parameters: any[]) => string
 
 export type RouteMap = { [routeMapSymbol]: any }
 export type Route = RouteCallable & RouteProps & { [routeSymbol]: any }
+/** Parameters accepted by a generated reverse route. */
+export type RouteParams<R extends Route> =
+  Parameters<R> extends [] ? {} :
+  Parameters<R> extends [infer Params] ? Params : never
+/** A route and the parameters captured while matching it. */
+export type RouteMatch<R extends Route> = R extends Route
+  ? { params: RouteParams<R>, route: R }
+  : never
+export type RouteActiveOptions<R extends Route> = {
+  exact?: boolean
+  params?: Partial<RouteParams<R>>
+}
 /** The root-to-route `data` declarations retained by `AsRouteMap`. */
 export type RouteDataDeclarations<R> =
   R extends RouteTypeMetadata<infer DataDeclarations> ? DataDeclarations : readonly []

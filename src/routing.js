@@ -1,7 +1,9 @@
 
 import { getHistory } from './history.js'
 import { callOrReturn } from './utils.js'
-import { pickRoute, routeSymbol } from './routeMap.js'
+import { pickRoute } from './routeMap.js'
+import { pickMatchedRoute, routeIsActive } from './routeMatch.js'
+/** @import { Route, RouteActiveOptions, RouteMap, RouteMatch } from './types.ts' */
 
 // Why so many contexts? Information should be grouped in a context based on the rate of change.
 /** @type {React.Context<null | { params: object, route: Route }>}*/
@@ -76,33 +78,26 @@ export function useHistory() {
   function DoNotUseHistoryOnServerSide() {}
 }
 
+/** @returns {<R extends Route>(...routes: R[]) => RouteMatch<R> | null} */
 export function usePick() {
   const locationMatch = useLocationMatch()
 
   return React.useCallback(
-    (...routes) => {
-      if (!locationMatch) return null
-
-      const { params, route } = locationMatch
-      const availableRoutes = new Map(
-        routes.map((route, i) => {
-          if (!route) throw new Error(`Route missing at index ${i}`)
-          return [route, route]
-        })
-      )
-      return selectRoute(route, params)
-
-      function selectRoute(route, params) {
-        const { parent } = route[routeSymbol]
-        return (
-          availableRoutes.has(route) ? { params, route: availableRoutes.get(route) } :
-          parent ? selectRoute(parent, params) :
-          null
-        )
-      }
-    },
+    /** @type {<R extends Route>(...routes: R[]) => RouteMatch<R> | null} */
+    ((...routes) => pickMatchedRoute(locationMatch, routes)),
     [locationMatch]
   )
+}
+
+/**
+ * Reports whether a route is the current route or one of its ancestors.
+ *
+ * @template {Route} R
+ * @param {R} route
+ * @param {RouteActiveOptions<R>} [options]
+ */
+export function useRouteActive(route, options) {
+  return routeIsActive(useLocationMatch(), route, options)
 }
 
 export function LocationProvider({
@@ -263,8 +258,3 @@ function shouldNavigate(e) {
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
 }
-
-/**
- * @typedef {import('./types.ts').Route} Route
- * @typedef {import('./types.ts').RouteMap} RouteMap
- */
